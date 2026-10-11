@@ -1,0 +1,66 @@
+Here is the **10-Phase Roadmap** to build RunSync 2.0 without skipping files or hallucinating code. Each phase focuses on a self-contained slice of the architecture, moving step-by-step from foundation to interactive features.
+
+---
+
+### The 10-Phase Execution Plan
+
+* **Phase 1: Design Tokens & Typography Foundation**
+* `web/tailwind.config.ts`, `web/app/globals.css`
+* Exact Obsidian `#070A11` background, slate-zinc card surfaces, borders, glow shadows, and font settings.
+
+
+* **Phase 2: TypeScript Data Schemas & Contracts**
+* `web/types/telemetry.ts`, `web/types/api.ts`
+* Strict types for active transfers, KPI metrics, chart time-series, engine states, and task requests.
+
+
+* **Phase 3: Core UI Primitives**
+* `web/lib/utils.ts`, `web/components/ui/badge.tsx`, `web/components/ui/button.tsx`, `web/components/ui/progress.tsx`, `web/components/ui/sparkline.tsx`
+* Reusable buttons, badges (`Downloading`, `Transferring`), progress meters, and SVG sparkline curves.
+
+
+
+
+* **Phase 4: Global App Shell**
+* `web/components/layout/Sidebar.tsx`, `web/components/layout/Header.tsx`, `web/app/layout.tsx`
+* Left-hand navigation menu with Google Drive quota bar, top global search bar, status badge (`Codespace • US-West`), and action buttons.
+
+
+
+
+* **Phase 5: Primary Extraction & Quick Actions Center**
+* `web/components/dashboard/WelcomeBanner.tsx`, `web/components/dashboard/ExtractionCard.tsx`, `web/components/dashboard/QuickActions.tsx`
+* "Good evening, Saiteja", link input with source badges (`Auto`, `Hugging Face`, `Academic Torrents`), `Cloud Extract` vs `Local Fetch`, and the 2x3 quick action grid.
+
+
+
+
+* **Phase 6: Top KPI Metrics & Telemetry Grid**
+* `web/components/dashboard/MetricsRow.tsx`
+* The 4 top KPI cards: `Active Transfers`, `Completed (128)`, `Data Extracted (4.82 TB)`, and `Avg Speed (186 MB/s)` with trend badges and sparkline graphs.
+
+
+
+
+* **Phase 7: Analytics & Storage Visualization**
+* `web/components/dashboard/AnalyticsGrid.tsx`, `web/components/dashboard/StorageCard.tsx`
+* Live area speed curve (Recharts), 24h downloaded/uploaded dual-bar chart, and segmented Google Drive storage card (`18.4 TB / 50 TB`).
+
+
+
+
+* **Phase 8: Active Transfers & Recent Activity Audit Log**
+* `web/components/dashboard/ActiveTransfers.tsx`, `web/components/dashboard/RecentActivity.tsx`
+* Multi-task streaming items (`Qwen-2.5-72B`, `Ubuntu-24.04`) with progress bars, velocity numbers, ETA countdowns, action buttons (pause/cancel), and chronological history feed.
+
+
+
+
+* **Phase 9: Client State & Network Polling Hooks**
+* `web/lib/api.ts`, `web/lib/github.ts`, `web/hooks/useCodespaceStatus.ts`, `web/hooks/useTelemetry.ts`
+* Ngrok header bypass client, GitHub Actions trigger booter, 2-second telemetry polling loop, and `localStorage` fallback cache.
+
+
+* **Phase 10: Master Page Assembly & Verification**
+* `web/app/page.tsx`
+* Connect all components, verify responsive layout across breakpoints, ensure zero TypeScript errors, and run production build tests.

@@ -1,0 +1,115 @@
+Here is the complete end-to-end file structure designed to deliver the exact finalized dashboard. It organizes your Codespace backend for multi-task telemetry while keeping an always-on frontend in a `/web` workspace ready for deployment on Netlify or Vercel.
+
+```text
+cloud-extracter/
+│
+├── .devcontainer/
+│   └── devcontainer.json                   # Codespace container & port configurations
+│
+├── .github/
+│   └── workflows/
+│       └── pipeline.yml                    # GitHub Actions headless trigger & auto-shutdown
+│
+├── start_service.sh                        # Root bootstrap script executed by GitHub Actions
+│
+├── backend/                                # 🐍 PYTHON FASTAPI BACKEND (Codespace Local)
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                         # FastAPI app instance, CORS & ngrok middleware
+│   │   │
+│   │   ├── api/
+│   │   │   ├── __init__.py
+│   │   │   ├── routes_tasks.py             # POST /enqueue, /pause, /resume, /cancel
+│   │   │   ├── routes_telemetry.py         # GET /status, /stats (KPIs), /analytics (charts)
+│   │   │   └── routes_system.py            # POST /shutdown, GET /health, /explore_drive
+│   │   │
+│   │   ├── core/
+│   │   │   ├── __init__.py
+│   │   │   ├── config.py                   # Tokens (HF, Ngrok), drive remote names, paths
+│   │   │   └── logger.py                   # Multi-threaded file & stream workflow logger
+│   │   │
+│   │   ├── database/
+│   │   │   ├── __init__.py
+│   │   │   └── state_store.py              # Persistent SQLite / JSON store for multi-task history
+│   │   │
+│   │   └── services/
+│   │       ├── __init__.py
+│   │       ├── task_manager.py             # Thread-safe multi-task queue & state coordinator
+│   │       ├── torrent_engine.py           # libtorrent swarm logic & sequential piece picker
+│   │       ├── huggingface_engine.py       # HF tree scanner & multithreaded chunk streamer
+│   │       └── rclone_streamer.py          # Zero-disk stdin pipe (rclone rcat) & disk cleanup
+│   │
+│   ├── requirements.txt                    # Python dependencies (fastapi, uvicorn, libtorrent, etc.)
+│   └── runtime_logs/
+│       ├── rclone_log.txt                  # Rclone transfer standard output logs
+│       └── server_workflow.log             # Engine activity & thread traces
+│
+└── web/                                    # 🌐 ALWAYS-ONLINE FRONTEND (Next.js + Tailwind)
+    ├── package.json                        # Frontend packages (Lucide icons, Recharts, Tailwind)
+    ├── tailwind.config.ts                  # Obsidian/Slate dark theme color palette & glow effects
+    ├── tsconfig.json                       # TypeScript compiler options
+    ├── next.config.mjs                     # Next.js export & image settings
+    │
+    ├── public/
+    │   ├── favicon.ico
+    │   └── runsync-symbol.svg              # Brand icon
+    │
+    └── src/
+        ├── app/
+        │   ├── globals.css                 # Dark mode styling, custom scrollbars, sparkline styles
+        │   ├── layout.tsx                  # Root layout containing the permanent AppShell
+        │   └── page.tsx                    # Main Dashboard page assembling all card sections
+        │
+        ├── components/
+        │   ├── layout/
+        │   │   ├── Sidebar.tsx             # Collapsible left navigation, drive quota, user tier
+        │   │   └── Header.tsx              # Global search, extract button, live status pill
+        │   │
+        │   ├── dashboard/
+        │   │   ├── WelcomeBanner.tsx       # "Good evening, Saiteja" + subtitle
+        │   │   ├── MetricsRow.tsx          # 4 Top KPI Cards (Active, Completed, Extracted, Speed)
+        │   │   ├── ExtractionCard.tsx      # Main input, source badges, Cloud/Local selector
+        │   │   ├── QuickActions.tsx        # Right-side action matrix (Clipboard, Batch, Storage)
+        │   │   ├── AnalyticsGrid.tsx       # Transfer Speed area chart & 24h bar graph
+        │   │   ├── StorageCard.tsx         # Storage usage breakdown (18.4 TB / 50 TB meter)
+        │   │   ├── ActiveTransfers.tsx     # Active jobs list with progress bars & action buttons
+        │   │   └── RecentActivity.tsx      # Chronological audit log of completed/failed tasks
+        │   │
+        │   └── ui/                         # Reusable UI primitives
+        │       ├── badge.tsx               # Semantic badges (Downloading, Transferring, etc.)
+        │       ├── button.tsx              # Elevated dark-mode buttons
+        │       ├── progress.tsx            # Smooth animated percentage progress bars
+        │       └── sparkline.tsx           # Inline mini-charts for the KPI metric cards
+        │
+        ├── hooks/
+        │   ├── useCodespaceStatus.ts       # Pings backend health & manages Online/Offline states
+        │   └── useTelemetry.ts             # 2-second polling hook for active tasks & charts
+        │
+        ├── lib/
+        │   ├── api.ts                      # Axios/Fetch client with ngrok bypass headers
+        │   ├── github.ts                   # Client-side repository_dispatch caller to wake Codespace
+        │   └── utils.ts                    # Class name utility (cn) & byte/ETA formatters
+        │
+        └── types/
+            ├── telemetry.ts                # Interfaces for Task, EngineStatus, and KPI stats
+            └── api.ts                      # Backend request & response schemas
+
+```
+
+---
+
+### Component-to-UI Mapping
+
+| Dashboard UI Section | Corresponding File |
+| --- | --- |
+| **Left Sidebar Navigation** | `web/src/components/layout/Sidebar.tsx` |
+| **Top Global Header & Status Pill** | `web/src/components/layout/Header.tsx` |
+| **Top 4 KPI Metrics + Sparklines** | `web/src/components/dashboard/MetricsRow.tsx` |
+| **Center Input & Source Chips** | `web/src/components/dashboard/ExtractionCard.tsx` |
+| **Right-hand Action Grid** | `web/src/components/dashboard/QuickActions.tsx` |
+| **Speed & Throughput Charts** | `web/src/components/dashboard/AnalyticsGrid.tsx` |
+| **Drive Storage Breakdown Card** | `web/src/components/dashboard/StorageCard.tsx` |
+| **Active Transfer Task Rows** | `web/src/components/dashboard/ActiveTransfers.tsx` |
+| **Recent Activity Timeline** | `web/src/components/dashboard/RecentActivity.tsx` |
+| **Multi-Task State Manager** | `backend/app/services/task_manager.py` |
+| **Persistent Task History** | `backend/app/database/state_store.py` |
