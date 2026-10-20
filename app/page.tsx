@@ -15,10 +15,6 @@ import { CheckCircle2, AlertTriangle, Loader2, X } from "lucide-react";
 export default function DashboardPage() {
   const { isOnline, isBooting, cluster, checkStatus, wakeUpCodespace } = useCodespaceStatus(5000);
   const [liveStorageBytes, setLiveStorageBytes] = useState<number>(0);
-  const [liveBytes24h, setLiveBytes24h] = useState<number>(0);
-  const [liveBytesToday, setLiveBytesToday] = useState<number>(0);
-  const [liveCompletedCount, setLiveCompletedCount] = useState<number>(135);
-  const [isMounted, setIsMounted] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const [showWakeModal, setShowWakeModal] = useState<boolean>(false);
@@ -30,23 +26,7 @@ export default function DashboardPage() {
 
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync and sanitize localStorage on mount to purge the 248 file-count glitch
-  useEffect(() => {
-    setIsMounted(true);
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("runsync_completed_count");
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 128 && parsed < 200) {
-          setLiveCompletedCount(parsed);
-        } else if (parsed >= 200) {
-          localStorage.setItem("runsync_completed_count", "135");
-          setLiveCompletedCount(135);
-        }
-      }
-    }
-  }, []);
-
+  // Queries Google Drive solely for the Storage Usage gauge
   const refreshStorageMetrics = useCallback(async () => {
     try {
       const folderId =
@@ -66,26 +46,21 @@ export default function DashboardPage() {
             );
 
       setLiveStorageBytes(total);
-      if (typeof data.bytes24h === "number") setLiveBytes24h(data.bytes24h);
-      if (typeof data.bytesToday === "number") setLiveBytesToday(data.bytesToday);
-
-      // Trust Drive's task count directly without trapping on old max values
-      if (typeof data.totalCompletedCount === "number" && data.totalCompletedCount > 0) {
-        const validCount = data.totalCompletedCount < 200 ? data.totalCompletedCount : 135;
-        setLiveCompletedCount(validCount);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("runsync_completed_count", String(validCount));
-        }
-      }
     } catch {
       // Preserve existing readings on network drop
     }
   }, []);
 
-  const { snapshot, triggerExtraction, pauseTask, resumeTask, cancelTask } = useTelemetry(
-    isOnline,
-    refreshStorageMetrics
-  );
+  const {
+    snapshot,
+    firestoreBytes24h,
+    firestoreTotalBytes,
+    firestoreBytesToday,
+    triggerExtraction,
+    pauseTask,
+    resumeTask,
+    cancelTask,
+  } = useTelemetry(isOnline, refreshStorageMetrics);
 
   const [toast, setToast] = useState<{
     show: boolean;
@@ -136,9 +111,6 @@ export default function DashboardPage() {
     return "huggingface";
   };
 
-  /**
-   * Browser-side Local Fetch engine (no Codespace needed)
-   */
   const handleLocalBrowserFetch = async (targetUrl: string, detectedEngine: string) => {
     setIsSubmitting(true);
     try {
@@ -229,9 +201,6 @@ export default function DashboardPage() {
     }
   };
 
-  /**
-   * Cloud extraction dispatcher via Codespace backend
-   */
   const dispatchExtractionPayload = async (payload: {
     url: string;
     source: SourceBadge;
@@ -271,9 +240,6 @@ export default function DashboardPage() {
     }
   };
 
-  /**
-   * Submission router: routes Local to browser, Cloud to Codespace
-   */
   const handleExtractSubmit = async (payload: {
     url: string;
     source: SourceBadge;
@@ -333,12 +299,8 @@ export default function DashboardPage() {
     }
   };
 
-  // Google Drive provides the exact completed job count directly
-  const effectiveCompletedCount = isMounted ? liveCompletedCount : 135;
-
   return (
     <div className="space-y-4 md:space-y-5 pb-2 relative">
-      {/* Standby Server Wake Modal */}
       <ServerWakeModal
         isOpen={showWakeModal}
         isBooting={isBooting}
@@ -349,7 +311,6 @@ export default function DashboardPage() {
         onConfirmWake={handleConfirmWake}
       />
 
-      {/* Toast Notification Banner */}
       {toast.show && (
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0D1424] border border-[#1E2C48] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md">
           {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
@@ -365,7 +326,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Row 1: Welcome Greeting & Status Pill */}
+      {/* Row 1: Greeting */}
       <WelcomeBanner
         userName="Saiteja"
         isOnline={isOnline}
@@ -374,17 +335,11 @@ export default function DashboardPage() {
         onWake={wakeUpCodespace}
       />
 
-      {/* Row 2: Top KPI Metric Cards */}
+      {/* Row 2: KPI Metrics Cards (All values & sub-trends bound to Firestore) */}
       <MetricsRow
-        metrics={{
-          ...snapshot.kpis,
-          completed: {
-            ...snapshot.kpis.completed,
-            value: effectiveCompletedCount,
-          },
-        }}
-        liveExtractedBytes={liveStorageBytes}
-        liveBytesToday={liveBytesToday}
+        metrics={snapshot.kpis}
+        liveExtractedBytes={firestoreTotalBytes}
+        liveBytesToday={firestoreBytesToday}
       />
 
       {/* Row 3: Action Center */}
@@ -397,7 +352,7 @@ export default function DashboardPage() {
         <AnalyticsGrid
           speedHistory={snapshot.speedHistory}
           currentSpeed={String(snapshot.kpis.avgSpeed.value)}
-          bytes24h={liveBytes24h}
+          bytes24h={firestoreBytes24h}
         />
         <StorageCard
           storage={{
