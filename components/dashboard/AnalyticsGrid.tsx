@@ -9,12 +9,14 @@ interface AnalyticsGridProps {
   speedHistory?: SpeedDataPoint[];
   currentSpeed?: string;
   bytes24h?: number;
+  hourlyData?: Record<string, number>;
 }
 
 export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
   speedHistory = [],
   currentSpeed = "0.00 MB/s",
   bytes24h = 0,
+  hourlyData,
 }) => {
   const chartPoints = useMemo(() => {
     const width = 300;
@@ -61,20 +63,25 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
     return { path: d, area: areaD };
   }, [speedHistory]);
 
-  const hourlyBars = [
-    { hour: "00:00", dl: 2.1, ul: 0.8 },
-    { hour: "02:00", dl: 1.4, ul: 0.4 },
-    { hour: "04:00", dl: 3.8, ul: 1.2 },
-    { hour: "06:00", dl: 6.2, ul: 2.8 },
-    { hour: "08:00", dl: 8.5, ul: 3.1 },
-    { hour: "10:00", dl: 12.4, ul: 4.5 },
-    { hour: "12:00", dl: 15.2, ul: 5.2 },
-    { hour: "14:00", dl: 11.8, ul: 3.9 },
-    { hour: "16:00", dl: 9.3, ul: 2.7 },
-    { hour: "18:00", dl: 7.1, ul: 1.9 },
-    { hour: "20:00", dl: 4.8, ul: 1.1 },
-    { hour: "22:00", dl: 2.9, ul: 0.9 },
-  ];
+  const hourlyBars = useMemo(() => {
+    const slots = ["00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22"];
+    return slots.map((hour) => {
+      const nextHour = String(Number(hour) + 1).padStart(2, "0");
+      const bytes1 = hourlyData?.[hour] || 0;
+      const bytes2 = hourlyData?.[nextHour] || 0;
+      const slotBytes = bytes1 + bytes2;
+      const slotGb = slotBytes / (1024 * 1024 * 1024);
+      return {
+        hour: `${hour}:00`,
+        dl: Number(slotGb.toFixed(2)),
+        ul: Number((slotGb * 0.1).toFixed(2)),
+      };
+    });
+  }, [hourlyData]);
+
+  const maxBar = useMemo(() => {
+    return Math.max(...hourlyBars.map((b) => b.dl), 0.5);
+  }, [hourlyBars]);
 
   const display24hString = bytes24h > 0 ? formatBytes(bytes24h) : "0 B";
 
@@ -127,7 +134,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
             )}
           </svg>
 
-          <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-[9px] font-mono text-slate-600 pointer-events-none pr-1">
+          <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-[9px] font-mono text-slate-500 pointer-events-none pr-1">
             <span>peak</span>
             <span>avg</span>
             <span>0</span>
@@ -135,12 +142,12 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
         </div>
       </div>
 
-      {/* Card 2: Data Transfer 24h Breakdown */}
+      {/* Card 2: 24h Data Transfer Historical Graph */}
       <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-slate-400">Data Transfer (24h)</span>
-            <div className="flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] font-mono">
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span className="font-medium">Data Transfer (24h)</span>
+            <div className="flex items-center gap-2 text-[10px] font-mono">
               <span className="flex items-center gap-1 text-sky-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
                 DL
@@ -162,35 +169,43 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
           </div>
         </div>
 
-        <div className="w-full mt-3 sm:mt-4 flex items-end justify-between gap-1 h-16 sm:h-20 pt-2 border-b border-[#1A263D]/60 pb-1">
-          {hourlyBars.map((bar, idx) => {
-            const dlHeight = (bar.dl / 16) * 100;
-            const ulHeight = (bar.ul / 16) * 100;
+        {/* Scaled Bar Chart for 24h rolling activity */}
+        <div className="mt-4">
+          <div className="flex items-end justify-between h-20 sm:h-24 gap-1 px-1">
+            {hourlyBars.map((bar, index) => {
+              const heightPercent = bar.dl > 0
+                ? Math.max(Math.min((bar.dl / maxBar) * 100, 100), 8)
+                : 4;
+              const ulHeightPercent = bar.ul > 0
+                ? Math.max(Math.min((bar.ul / maxBar) * 100, 50), 4)
+                : 2;
 
-            return (
-              <div
-                key={idx}
-                className="flex-1 flex items-end justify-center gap-0.5 h-full group relative"
-              >
+              return (
                 <div
-                  className="w-1 bg-sky-400/80 rounded-t group-hover:bg-sky-300 transition-all"
-                  style={{ height: `${dlHeight}%` }}
-                />
-                <div
-                  className="w-1 bg-blue-600/80 rounded-t group-hover:bg-blue-500 transition-all"
-                  style={{ height: `${ulHeight}%` }}
-                />
-              </div>
-            );
-          })}
-        </div>
+                  key={index}
+                  className="flex-1 flex items-end justify-center gap-0.5 h-full group relative"
+                  title={`${bar.hour}: ${bar.dl} GB`}
+                >
+                  <div
+                    style={{ height: `${heightPercent}%` }}
+                    className="w-full max-w-[6px] rounded-t-sm bg-sky-400/80 group-hover:bg-sky-300 transition-all"
+                  />
+                  <div
+                    style={{ height: `${ulHeightPercent}%` }}
+                    className="w-full max-w-[4px] rounded-t-sm bg-blue-600/60 group-hover:bg-blue-500 transition-all"
+                  />
+                </div>
+              );
+            })}
+          </div>
 
-        <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-mono text-slate-500 mt-1">
-          <span>00:00</span>
-          <span>06:00</span>
-          <span>12:00</span>
-          <span>18:00</span>
-          <span>22:00</span>
+          <div className="flex justify-between text-[9px] font-mono text-slate-500 mt-2 px-1 border-t border-[#151D2E]/80 pt-1.5">
+            <span>00:00</span>
+            <span>06:00</span>
+            <span>12:00</span>
+            <span>18:00</span>
+            <span>22:00</span>
+          </div>
         </div>
       </div>
     </>

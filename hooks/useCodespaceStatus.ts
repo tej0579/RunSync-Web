@@ -3,64 +3,101 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { checkBackendHealth, wakeCodespaceInstance } from "@/lib/api";
 
-export type CodespaceStatusType = "online" | "booting" | "standby";
+export type CodespaceStatusType = "online" | "booting" | "standby" | "degraded";
 
 export function useCodespaceStatus(pollIntervalMs: number = 5000) {
   const [status, setStatus] = useState<CodespaceStatusType>("standby");
   const [cluster, setCluster] = useState<string>("Codespace • US-West");
   const [isBooting, setIsBooting] = useState<boolean>(false);
   const [engineState, setEngineState] = useState<string>("idle");
+  const [lastCheckedTime, setLastCheckedTime] = useState<string>("");
 
   const isBootingRef = useRef(isBooting);
   isBootingRef.current = isBooting;
 
-  const activePollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isCheckingRef = useRef(false);
 
   const checkStatus = useCallback(async (): Promise<boolean> => {
-    const health = await checkBackendHealth();
-    if (health && health.status === "online") {
-      setStatus("online");
-      setIsBooting(false);
-      if (health.cluster) setCluster(health.cluster);
-      if (health.engine) setEngineState(health.engine);
-      return true;
-    } else {
+    if (isCheckingRef.current) return false;
+    isCheckingRef.current = true;
+
+    try {
+      const health = await checkBackendHealth();
+      setLastCheckedTime(new Date().toLocaleTimeString());
+
+      if (health && health.status === "online") {
+        setStatus("online");
+        setIsBooting(false);
+        if (health.cluster) setCluster(health.cluster);
+        if (health.engine) setEngineState(health.engine);
+        return true;
+      } else if (health && health.status === "standby") {
+        if (!isBootingRef.current) {
+          setStatus("standby");
+          setEngineState("idle");
+        }
+        return false;
+      } else {
+        // Outage or degraded response
+        if (!isBootingRef.current) {
+          setStatus((prev) => (prev === "online" ? "degraded" : "standby"));
+        }
+        return false;
+      }
+    } catch {
       if (!isBootingRef.current) {
-        setStatus("standby");
-        setEngineState("idle");
+        setStatus((prev) => (prev === "online" ? "degraded" : "standby"));
       }
       return false;
+    } finally {
+      isCheckingRef.current = false;
     }
   }, []);
 
-  // Main polling loop
+  // Main unified polling loop using recursive timeout (no overlapping requests)
   useEffect(() => {
-    checkStatus();
+    let timeoutId: NodeJS.Timeout;
+    let isMounted = true;
 
-    const interval = setInterval(async () => {
-      await checkStatus();
-    }, isBooting ? 2500 : pollIntervalMs);
+    const schedulePoll = () => {
+      const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+      const delay = isHidden ? 15000 : isBooting ? 2500 : pollIntervalMs;
 
-    return () => clearInterval(interval);
-  }, [checkStatus, pollIntervalMs, isBooting]);
+      timeoutId = setTimeout(async () => {
+        if (isMounted) {
+          await checkStatus();
+          if (isMounted) schedulePoll();
+        }
+      }, delay);
+    };
 
-  // Clean up any active boot poll timer on unmount
-  useEffect(() => {
-    return () => {
-      if (activePollTimerRef.current) {
-        clearInterval(activePollTimerRef.current);
+    checkStatus().then(() => {
+      if (isMounted) schedulePoll();
+    });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkStatus();
       }
     };
-  }, []);
 
-  /**
-   * Dispatches GitHub Action to wake up Codespace and polls until alive
-   */
-  const wakeUpCodespace = useCallback(async (): Promise<boolean> => {
-    if (activePollTimerRef.current) {
-      clearInterval(activePollTimerRef.current);
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
     }
 
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
+    };
+  }, [checkStatus, pollIntervalMs, isBooting]);
+
+  /**
+   * Dispatches GitHub Action to wake up Codespace
+   */
+  const wakeUpCodespace = useCallback(async (): Promise<boolean> => {
     setIsBooting(true);
     setStatus("booting");
 
@@ -71,25 +108,8 @@ export function useCodespaceStatus(pollIntervalMs: number = 5000) {
       return false;
     }
 
-    // Actively poll for up to 90 seconds (Codespace boot + Ngrok handshake takes ~25-40s)
-    let attempts = 0;
-    const maxAttempts = 30; // 30 * 3s = 90s
-
-    activePollTimerRef.current = setInterval(async () => {
-      attempts++;
-      const isAlive = await checkStatus();
-      if (isAlive || attempts >= maxAttempts) {
-        if (activePollTimerRef.current) {
-          clearInterval(activePollTimerRef.current);
-          activePollTimerRef.current = null;
-        }
-        if (!isAlive) {
-          setIsBooting(false);
-          setStatus("standby");
-        }
-      }
-    }, 3000);
-
+    // Immediately trigger status check
+    await checkStatus();
     return true;
   }, [checkStatus]);
 
@@ -99,6 +119,7 @@ export function useCodespaceStatus(pollIntervalMs: number = 5000) {
     isBooting,
     cluster,
     engineState,
+    lastCheckedTime,
     checkStatus,
     wakeUpCodespace,
   };

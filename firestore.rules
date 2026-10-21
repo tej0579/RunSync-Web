@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Deny all writes from client SDKs to ensure authoritative analytics
+    // can only be mutated through the authenticated server API (/api/metrics)
+    match /analytics/{document} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    match /completed_tasks/{taskId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Default deny rule for all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

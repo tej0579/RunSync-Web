@@ -12,10 +12,7 @@ interface MetricsRowProps {
   liveBytesToday?: number;
 }
 
-const activeTransfersSparkline = [0, 1, 2, 2, 3, 2, 1, 2, 1];
-const completedSparkline = [110, 114, 118, 120, 122, 125, 128];
-const dataExtractedSparkline = [40, 65, 80, 95, 120, 145, 156];
-const avgSpeedSparkline = [0, 25, 60, 45, 90, 140, 186];
+const defaultFlatSparkline = [0, 0, 0, 0, 0, 0, 0];
 
 export const MetricsRow: React.FC<MetricsRowProps> = ({
   metrics,
@@ -25,10 +22,10 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
   const calculatedDataExtracted =
     typeof liveExtractedBytes === "number" && liveExtractedBytes > 0
       ? formatBytes(liveExtractedBytes)
-      : metrics?.dataExtracted?.value ?? "156.9 GB";
+      : String(metrics?.dataExtracted?.value ?? "0 B");
 
   const dynamicTodayTrend =
-    typeof liveBytesToday === "number"
+    typeof liveBytesToday === "number" && liveBytesToday > 0
       ? `+${formatBytes(liveBytesToday)} today`
       : "+0 B today";
 
@@ -48,14 +45,14 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       isPositive: Number(metrics?.activeTransfers?.value ?? 0) > 0,
     },
     completed: {
-      value: metrics?.completed?.value ?? 135,
-      trend: metrics?.completed?.trend ?? "+12 this week",
-      isPositive: true,
+      value: metrics?.completed?.value ?? 0,
+      trend: metrics?.completed?.trend ?? "0 this week",
+      isPositive: Number(metrics?.completed?.value ?? 0) > 0,
     },
     dataExtracted: {
       value: calculatedDataExtracted,
       trend: dynamicTodayTrend,
-      isPositive: true,
+      isPositive: (liveBytesToday ?? 0) > 0,
     },
     avgSpeed: {
       value: displaySpeed,
@@ -76,7 +73,7 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       iconBg: "bg-blue-500/10 border-blue-500/25",
       sparklineType: "line" as const,
       sparklineColor: "blue" as const,
-      sparklineData: activeTransfersSparkline,
+      sparklineData: Number(defaultMetrics.activeTransfers.value) > 0 ? [0, 1, 1, 1, 2, 1, 1] : defaultFlatSparkline,
     },
     {
       id: "completed",
@@ -89,7 +86,7 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       iconBg: "bg-emerald-500/10 border-emerald-500/25",
       sparklineType: "bars" as const,
       sparklineColor: "emerald" as const,
-      sparklineData: completedSparkline,
+      sparklineData: Number(defaultMetrics.completed.value) > 0 ? [1, 2, 3, 4, 5, 5, 6] : defaultFlatSparkline,
     },
     {
       id: "extracted",
@@ -100,9 +97,9 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       icon: Download,
       iconColor: "text-purple-400",
       iconBg: "bg-purple-500/10 border-purple-500/25",
-      sparklineType: "bars" as const,
+      sparklineType: "line" as const,
       sparklineColor: "purple" as const,
-      sparklineData: dataExtractedSparkline,
+      sparklineData: (liveExtractedBytes ?? 0) > 0 ? [10, 20, 35, 50, 70, 85, 100] : defaultFlatSparkline,
     },
     {
       id: "speed",
@@ -115,60 +112,61 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       iconBg: "bg-amber-500/10 border-amber-500/25",
       sparklineType: "line" as const,
       sparklineColor: "amber" as const,
-      sparklineData: avgSpeedSparkline,
+      sparklineData: defaultMetrics.avgSpeed.isPositive ? [5, 15, 25, 40, 50, 35, 45] : defaultFlatSparkline,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 select-none">
       {cards.map((card) => {
         const Icon = card.icon;
-        const isTrendActive = card.isPositive && !String(card.trend).toLowerCase().includes("idle");
 
         return (
           <div
             key={card.id}
-            className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-[#0D1424]/90 border border-[#1A263D] hover:border-slate-600/60 shadow-lg shadow-black/40 flex flex-col justify-between transition-all duration-200 backdrop-blur-sm"
+            className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl hover:border-slate-700/70 transition-all flex flex-col justify-between"
           >
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div
-                className={cn(
-                  "w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 border",
-                  card.iconBg,
-                  card.iconColor
-                )}
-              >
-                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </div>
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-300 truncate select-none">
+            {/* Top row: Title + Icon */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] sm:text-xs font-medium text-slate-400 truncate">
                 {card.title}
               </span>
+              <div
+                className={cn(
+                  "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border shrink-0",
+                  card.iconBg
+                )}
+              >
+                <Icon className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4", card.iconColor)} />
+              </div>
             </div>
 
-            <div className="flex items-end justify-between mt-3 sm:mt-4">
-              <div className="min-w-0">
-                <div className="text-lg sm:text-2xl font-extrabold text-white tracking-tight font-sans truncate">
-                  {card.value}
-                </div>
-                <div
+            {/* Middle row: Big Metric Value */}
+            <div className="mt-2.5 sm:mt-3">
+              <div className="text-lg sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight truncate">
+                {card.value}
+              </div>
+            </div>
+
+            {/* Bottom row: Trend subtitle + Sparkline */}
+            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-[#151D2E]/80">
+              <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono truncate">
+                <span
                   className={cn(
-                    "flex items-center gap-1 mt-0.5 sm:mt-1 text-[10px] sm:text-[11px] font-medium font-mono truncate",
-                    isTrendActive ? "text-emerald-400" : "text-slate-500"
+                    "font-medium",
+                    card.isPositive ? "text-emerald-400" : "text-slate-500"
                   )}
                 >
-                  {isTrendActive && <span>▲</span>}
-                  <span className="truncate">{card.trend}</span>
-                </div>
+                  {card.trend}
+                </span>
               </div>
 
-              {/* Sparkline visible on desktop/tablet, hidden on compact mobile viewports */}
-              <div className="hidden sm:block shrink-0 mb-1">
+              <div className="w-14 sm:w-16 h-5 shrink-0 opacity-80">
                 <Sparkline
+                  data={card.sparklineData}
                   type={card.sparklineType}
                   color={card.sparklineColor}
-                  data={card.sparklineData}
-                  width={90}
-                  height={32}
+                  className="w-full h-full"
                 />
               </div>
             </div>

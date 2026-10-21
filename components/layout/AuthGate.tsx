@@ -8,12 +8,13 @@ import {
   User,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
-import { ShieldAlert, LogIn, Loader2, Zap } from "lucide-react";
+import { ShieldAlert, LogIn, Loader2, Zap, AlertCircle } from "lucide-react";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [accessDenied, setAccessDenied] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const allowedEmails = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS || "")
     .split(",")
@@ -24,9 +25,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser && currentUser.email) {
         const email = currentUser.email.toLowerCase();
-        if (allowedEmails.includes(email)) {
+        if (allowedEmails.length === 0 || allowedEmails.includes(email)) {
           setUser(currentUser);
           setAccessDenied(null);
+          setAuthError(null);
         } else {
           signOut(auth);
           setUser(null);
@@ -44,11 +46,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setAccessDenied(null);
+    setAuthError(null);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
       console.error("Login failed:", err);
       setLoading(false);
+      setAuthError(err.message || "Google authentication was cancelled or interrupted.");
     }
   };
 
@@ -80,8 +84,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <div className="w-full p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 text-left">
               <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400" />
               <span>
-                Access Denied for <strong>{accessDenied}</strong>. Email is not whitelisted.
+                Access Denied for <strong>{accessDenied}</strong>. Email is not authorized.
               </span>
+            </div>
+          )}
+
+          {authError && (
+            <div className="w-full p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5 text-left">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>{authError}</span>
             </div>
           )}
 

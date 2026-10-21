@@ -50,4 +50,6 @@ export interface TelemetrySnapshot {
     usedBytes: number;
     totalBytes: number;
   };
+  isStale?: boolean;
+  hourlyTransfers?: Record<string, number>;
 }

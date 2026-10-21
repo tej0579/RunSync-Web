@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
+import { getServerEnv } from "@/lib/env";
+import { verifyServerAuth } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +18,12 @@ function cleanPrivateKey(key?: string): string {
 }
 
 function getDriveClient() {
-  const clientEmail = process.env.GDRIVE_CLIENT_EMAIL;
-  const rawPrivateKey = process.env.GDRIVE_PRIVATE_KEY;
-  const privateKey = cleanPrivateKey(rawPrivateKey);
+  const env = getServerEnv();
+  const clientEmail = env.GDRIVE_CLIENT_EMAIL;
+  const privateKey = cleanPrivateKey(env.GDRIVE_PRIVATE_KEY);
 
   if (!clientEmail || !privateKey) {
-    throw new Error(
-      "Missing Google Drive credentials in .env.local (GDRIVE_CLIENT_EMAIL / GDRIVE_PRIVATE_KEY)"
-    );
+    throw new Error("Missing Google Drive credentials in environment (GDRIVE_CLIENT_EMAIL / GDRIVE_PRIVATE_KEY)");
   }
 
   const auth = new google.auth.JWT({
@@ -35,60 +35,122 @@ function getDriveClient() {
   return google.drive({ version: "v3", auth });
 }
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const targetFolderId =
-      searchParams.get("folderId") ||
-      process.env.GDRIVE_FOLDER_ID ||
-      process.env.NEXT_PUBLIC_GDRIVE_FOLDER_ID ||
-      "1W5rVvmzDA5hpFEH8Sd53IyLb9R-bmY9O";
+// In-memory cache for Drive file listing to avoid quota exhaustion from rapid polling
+interface DriveCache {
+  data: any;
+  timestamp: number;
+}
+const cacheStore = new Map<string, DriveCache>();
+const CACHE_TTL_MS = 15000; // 15 seconds cache
 
+export async function GET(req: NextRequest) {
+  // 1. Authenticate caller
+  const auth = await verifyServerAuth(req);
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  try {
+    const env = getServerEnv();
+    const rootFolderId = env.GDRIVE_FOLDER_ID;
+
+    if (!rootFolderId) {
+      return NextResponse.json(
+        { error: "Configuration Error: GDRIVE_FOLDER_ID is not configured." },
+        { status: 500 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const requestedFolderId = searchParams.get("folderId") || rootFolderId;
     const search = searchParams.get("search");
+
+    const cacheKey = `drive:${requestedFolderId}:${search || ""}`;
+    const cached = cacheStore.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return NextResponse.json(cached.data);
+    }
+
     const drive = getDriveClient();
 
-    const allItemsRes = await drive.files.list({
-      q: "trashed = false",
-      fields: "files(id, name, mimeType, size, parents, modifiedTime, webViewLink, iconLink)",
-      pageSize: 1000,
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
+    // 2. Fetch files with full pagination
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+    let pageCount = 0;
+    const maxPages = 5; // Safety cap at 5,000 items
 
-    const allItems = allItemsRes.data.files || [];
+    do {
+      const listResponse: any = await drive.files.list({
+        q: "trashed = false",
+        fields: "nextPageToken, files(id, name, mimeType, size, parents, modifiedTime, webViewLink, iconLink)",
+        pageSize: 1000,
+        pageToken,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      });
 
-    const now = Date.now();
-    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const startOfTodayMs = startOfToday.getTime();
+      if (listResponse.data.files) {
+        allFiles.push(...listResponse.data.files);
+      }
+      pageToken = listResponse.data.nextPageToken || undefined;
+      pageCount++;
+    } while (pageToken && pageCount < maxPages);
 
-    let bytes24h = 0;
-    let bytesToday = 0;
-
+    // 3. Build ancestor and parent map to enforce root folder boundary
     const parentMap = new Map<string, string[]>();
-    for (const item of allItems) {
+    for (const item of allFiles) {
       if (item.id && item.parents) {
         parentMap.set(item.id, item.parents);
       }
     }
 
-    const folderSizeMap = new Map<string, number>();
-    let totalStorageBytes = 0;
+    // Helper to verify if an item belongs under rootFolderId
+    const isDescendantOfRoot = (itemId: string): boolean => {
+      if (itemId === rootFolderId) return true;
+      const visited = new Set<string>();
+      let queue = parentMap.get(itemId) ? [...(parentMap.get(itemId) || [])] : [];
 
-    for (const item of allItems) {
+      while (queue.length > 0) {
+        const parentId = queue.shift()!;
+        if (parentId === rootFolderId) return true;
+        if (visited.has(parentId)) continue;
+        visited.add(parentId);
+        const grandparents = parentMap.get(parentId);
+        if (grandparents) queue.push(...grandparents);
+      }
+      return false;
+    };
+
+    // Verify requested folder belongs to authorized root tree
+    if (requestedFolderId !== rootFolderId && !isDescendantOfRoot(requestedFolderId)) {
+      return NextResponse.json(
+        { error: "Forbidden: Requested folder is outside the authorized storage tree." },
+        { status: 403 }
+      );
+    }
+
+    // 4. Calculate real sizes and rolling time window totals
+    const now = Date.now();
+    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+    const startOfTodayMs = new Date().setUTCHours(0, 0, 0, 0);
+
+    let bytes24h = 0;
+    let bytesToday = 0;
+    let totalStorageBytes = 0;
+    const folderSizeMap = new Map<string, number>();
+
+    for (const item of allFiles) {
+      // Only account for files within the authorized root scope
+      if (!isDescendantOfRoot(item.id || "")) continue;
+
       const isFolder = item.mimeType === "application/vnd.google-apps.folder";
       if (!isFolder && item.size) {
         const bytes = parseInt(item.size, 10) || 0;
         totalStorageBytes += bytes;
 
         const modTime = item.modifiedTime ? new Date(item.modifiedTime).getTime() : 0;
-        if (modTime >= twentyFourHoursAgo) {
-          bytes24h += bytes;
-        }
-        if (modTime >= startOfTodayMs) {
-          bytesToday += bytes;
-        }
+        if (modTime >= twentyFourHoursAgo) bytes24h += bytes;
+        if (modTime >= startOfTodayMs) bytesToday += bytes;
 
         // Bubble up bytes to ancestor folders
         let queue = item.parents ? [...item.parents] : [];
@@ -99,30 +161,23 @@ export async function GET(req: NextRequest) {
           if (visited.has(parentId)) continue;
           visited.add(parentId);
 
-          folderSizeMap.set(
-            parentId,
-            (folderSizeMap.get(parentId) || 0) + bytes
-          );
-
-          const grandParents = parentMap.get(parentId);
-          if (grandParents) {
-            for (const gp of grandParents) {
-              if (!visited.has(gp)) queue.push(gp);
-            }
-          }
+          folderSizeMap.set(parentId, (folderSizeMap.get(parentId) || 0) + bytes);
+          const grandparents = parentMap.get(parentId);
+          if (grandparents) queue.push(...grandparents);
         }
       }
     }
 
+    // 5. Filter items for display
     let displayItems: any[] = [];
     if (search && search.trim()) {
       const term = search.trim().toLowerCase();
-      displayItems = allItems.filter((item) =>
-        (item.name || "").toLowerCase().includes(term)
+      displayItems = allFiles.filter(
+        (item) => isDescendantOfRoot(item.id || "") && (item.name || "").toLowerCase().includes(term)
       );
     } else {
-      displayItems = allItems.filter(
-        (item) => item.parents && item.parents.includes(targetFolderId)
+      displayItems = allFiles.filter(
+        (item) => item.parents && item.parents.includes(requestedFolderId)
       );
     }
 
@@ -146,27 +201,25 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const folderStorage = folderSizeMap.get(targetFolderId);
-
-    // Direct items inside CodespaceDownloads (each folder or file is 1 distinct extraction task)
+    const folderStorage = folderSizeMap.get(requestedFolderId);
     const directChildrenCount = displayItems.length;
 
-    // True count of completed extraction tasks (baseline 135)
-    const totalCompletedCount = Math.max(directChildrenCount, 135);
-
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
-      folderId: targetFolderId,
+      folderId: requestedFolderId,
       totalStorageBytes: typeof folderStorage === "number" ? folderStorage : totalStorageBytes,
       bytes24h,
       bytesToday,
-      totalCompletedCount,
+      totalCompletedCount: directChildrenCount,
       files,
-    });
+    };
+
+    cacheStore.set(cacheKey, { data: responsePayload, timestamp: Date.now() });
+    return NextResponse.json(responsePayload);
   } catch (error: any) {
     console.error("[Drive API Error]", error);
     return NextResponse.json(
-      { error: error.message || "Failed to query Google Drive API" },
+      { error: "Failed to query Google Drive API" },
       { status: 500 }
     );
   }

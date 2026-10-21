@@ -1,8 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowRight, Link2, Sparkles, Database, Globe, Loader2 } from "lucide-react";
+import {
+  ArrowRight,
+  Link2,
+  Sparkles,
+  Database,
+  Globe,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { validateExtractionInput } from "@/lib/validation";
 
 export type SourceBadge = "auto" | "hf" | "academic";
 export type ExecutionMode = "cloud" | "local";
@@ -23,6 +32,7 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
   const [url, setUrl] = useState("");
   const [source, setSource] = useState<SourceBadge>("auto");
   const [mode, setMode] = useState<ExecutionMode>("cloud");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Listen for QuickActions clipboard/preset injection
   useEffect(() => {
@@ -31,6 +41,7 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
       if (customEvent.detail) {
         const val = customEvent.detail.trim();
         setUrl(val);
+        setValidationError(null);
 
         if (val.includes("huggingface.co") || val.includes("hf.co")) {
           setSource("hf");
@@ -48,12 +59,28 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
     return () => window.removeEventListener("runsync:set_url", handleSetUrl);
   }, []);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrl(e.target.value);
+    if (validationError) {
+      setValidationError(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim() || isSubmitting) return;
 
+    // Validate using strict schema
+    const validation = validateExtractionInput(url, source);
+    if (!validation.valid) {
+      setValidationError(validation.error || "Invalid extraction input.");
+      return;
+    }
+
+    setValidationError(null);
+
     await onExtract({
-      url: url.trim(),
+      url: validation.normalizedInput || url.trim(),
       source,
       mode,
     });
@@ -68,19 +95,19 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
         {isSubmitting && (
           <div className="flex items-center gap-1.5 text-blue-400 text-[11px] sm:text-xs font-mono">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span className="truncate">Dispatching...</span>
+            <span className="truncate">Dispatching to cloud...</span>
           </div>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3.5">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Main URL Input Bar */}
         <div className="relative flex items-center">
-          <Link2 className="w-4 h-4 text-slate-500 absolute left-3" />
+          <Link2 className="w-4 h-4 text-slate-500 absolute left-3 shrink-0" />
           <input
             type="text"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={handleInputChange}
             disabled={isSubmitting}
             placeholder="Paste infohash, magnet, or Hugging Face repository link..."
             className="w-full bg-[#070B14] border border-[#1A263D] focus:border-blue-500 rounded-xl pl-9 pr-24 sm:pr-28 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-60"
@@ -106,14 +133,25 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
           </Button>
         </div>
 
-        {/* Source Badges & Execution Mode Switcher (Horizontal scroll safe on small phones) */}
+        {/* Validation Error Message */}
+        {validationError && (
+          <div className="flex items-center gap-1.5 text-rose-400 text-xs px-1">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>{validationError}</span>
+          </div>
+        )}
+
+        {/* Source Badges & Execution Mode Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
           {/* Scrollable Badges */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none no-scrollbar">
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => setSource("auto")}
+              onClick={() => {
+                setSource("auto");
+                setValidationError(null);
+              }}
               className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "auto"
                   ? "bg-blue-600/20 text-blue-400 border border-blue-500/40"
@@ -127,7 +165,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => setSource("hf")}
+              onClick={() => {
+                setSource("hf");
+                setValidationError(null);
+              }}
               className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "hf"
                   ? "bg-amber-600/20 text-amber-400 border border-amber-500/40"
@@ -140,7 +181,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => setSource("academic")}
+              onClick={() => {
+                setSource("academic");
+                setValidationError(null);
+              }}
               className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "academic"
                   ? "bg-rose-600/20 text-rose-400 border border-rose-500/40"

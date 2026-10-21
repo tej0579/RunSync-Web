@@ -33,9 +33,9 @@ export default function RootLayout({
           {/* Navigation: Responsive Topbar + Slide Drawer on Mobile, Fixed Sidebar on Desktop */}
           <Sidebar />
 
-          {/* Independent Scrollable Content Area */}
+          {/* Independent Scrollable Content Area with Safe Bottom Padding */}
           <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-y-auto overscroll-y-contain">
-            <main className="flex-1 px-3.5 sm:px-6 md:px-8 pt-4 sm:pt-6 pb-28 sm:pb-24 md:pb-12 max-w-7xl w-full mx-auto">
+            <main className="flex-1 px-3.5 sm:px-6 md:px-8 pt-5 sm:pt-6 pb-36 sm:pb-28 md:pb-16 max-w-7xl w-full mx-auto">
               {children}
             </main>
           </div>

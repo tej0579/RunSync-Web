@@ -11,6 +11,7 @@ import { ServerWakeModal } from "@/components/dashboard/ServerWakeModal";
 import { useCodespaceStatus } from "@/hooks/useCodespaceStatus";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import { CheckCircle2, AlertTriangle, Loader2, X } from "lucide-react";
+import { getAuthHeaders } from "@/lib/clientAuth";
 
 export default function DashboardPage() {
   const { isOnline, isBooting, cluster, checkStatus, wakeUpCodespace } = useCodespaceStatus(5000);
@@ -31,8 +32,10 @@ export default function DashboardPage() {
     try {
       const folderId =
         process.env.NEXT_PUBLIC_GDRIVE_FOLDER_ID || "1W5rVvmzDA5hpFEH8Sd53IyLb9R-bmY9O";
+      const headers = await getAuthHeaders();
       const res = await fetch(`/api/drive?folderId=${encodeURIComponent(folderId)}`, {
         cache: "no-store",
+        headers,
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -56,6 +59,7 @@ export default function DashboardPage() {
     firestoreBytes24h,
     firestoreTotalBytes,
     firestoreBytesToday,
+    hourlyTransfers,
     triggerExtraction,
     pauseTask,
     resumeTask,
@@ -126,18 +130,14 @@ export default function DashboardPage() {
           .split("/blob/")[0]
           .trim();
 
-        const endpoint = `https://huggingface.co/api/${isDataset ? "datasets" : "models"}/${cleanId}/tree/main?recursive=true`;
+        const endpoint = `https://huggingface.co/api/${isDataset ? "datasets" : "models"}/${encodeURIComponent(cleanId)}/tree/main?recursive=true`;
 
-        const hfToken = process.env.NEXT_PUBLIC_HF_TOKEN || "";
-        const headers: Record<string, string> = {};
-        if (hfToken) {
-          headers["Authorization"] = `Bearer ${hfToken}`;
-        }
-
-        const res = await fetch(endpoint, { headers });
+        const res = await fetch(endpoint, {
+          headers: { Accept: "application/json" },
+        });
 
         if (res.status === 401 || res.status === 403) {
-          throw new Error("Gated access restricted. Accept model terms on Hugging Face first.");
+          throw new Error("Gated access restricted. Accept model terms on Hugging Face first or use Cloud Extract mode.");
         }
 
         if (!res.ok) {
@@ -153,38 +153,21 @@ export default function DashboardPage() {
 
         showToast(`Discovered ${fileItems.length} files. Initiating direct browser download...`, "success", 4000);
 
-        const filesToDownload = fileItems.slice(0, 5);
+        const filesToDownload = files.filter((f: any) => f.type === "file").slice(0, 5);
         for (let idx = 0; idx < filesToDownload.length; idx++) {
           const f = filesToDownload[idx];
-          setTimeout(async () => {
-            const dlUrl = `https://huggingface.co/${isDataset ? "datasets/" : ""}${cleanId}/resolve/main/${f.path}`;
-
-            try {
-              if (hfToken) {
-                const blobRes = await fetch(dlUrl, { headers });
-                if (!blobRes.ok) throw new Error("Download token rejected");
-                const blob = await blobRes.blob();
-                const objectUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = objectUrl;
-                a.download = f.path.split("/").pop() || "download";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(objectUrl);
-              } else {
-                const a = document.createElement("a");
-                a.href = dlUrl;
-                a.download = f.path.split("/").pop() || "download";
-                a.target = "_blank";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              }
-            } catch {
-              window.open(dlUrl, "_blank");
-            }
-          }, idx * 750);
+          const dlUrl = `https://huggingface.co/${isDataset ? "datasets/" : ""}${cleanId}/resolve/main/${f.path}`;
+          const a = document.createElement("a");
+          a.href = dlUrl;
+          a.download = f.path.split("/").pop() || "download";
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          if (idx < filesToDownload.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
         }
 
         if (fileItems.length > 5) {
@@ -312,7 +295,11 @@ export default function DashboardPage() {
       />
 
       {toast.show && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0D1424] border border-[#1E2C48] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0D1424] border border-[#1E2C48] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
+        >
           {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
           {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
           {toast.type === "info" && <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />}
@@ -320,13 +307,14 @@ export default function DashboardPage() {
           <button
             onClick={() => setToast((prev) => ({ ...prev, show: false }))}
             className="text-slate-500 hover:text-slate-300 ml-1"
+            aria-label="Dismiss message"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Row 1: Greeting */}
+      {/* Row 1: Greeting & System Status Pill */}
       <WelcomeBanner
         userName="Saiteja"
         isOnline={isOnline}
@@ -335,7 +323,7 @@ export default function DashboardPage() {
         onWake={wakeUpCodespace}
       />
 
-      {/* Row 2: KPI Metrics Cards (All values & sub-trends bound to Firestore) */}
+      {/* Row 2: KPI Metrics Cards */}
       <MetricsRow
         metrics={snapshot.kpis}
         liveExtractedBytes={firestoreTotalBytes}
@@ -347,28 +335,29 @@ export default function DashboardPage() {
         <ExtractionCard onExtract={handleExtractSubmit} isSubmitting={isSubmitting} />
       </div>
 
-      {/* Row 4: Analytics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
-        <AnalyticsGrid
-          speedHistory={snapshot.speedHistory}
-          currentSpeed={String(snapshot.kpis.avgSpeed.value)}
-          bytes24h={firestoreBytes24h}
-        />
-        <StorageCard
-          storage={{
-            usedBytes: liveStorageBytes,
-            totalBytes: 5 * 1024 * 1024 * 1024 * 1024,
-          }}
-        />
-      </div>
-
-      {/* Row 5: Operations List */}
+      {/* Row 4: Operations / Active Transfers List (Placed immediately under Extraction Card for direct live progress visibility) */}
       <div className="w-full">
         <ActiveTransfers
           tasks={snapshot.tasks}
           onPause={pauseTask}
           onResume={resumeTask}
           onCancel={cancelTask}
+        />
+      </div>
+
+      {/* Row 5: Analytics Grid & Storage Card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+        <AnalyticsGrid
+          speedHistory={snapshot.speedHistory}
+          currentSpeed={String(snapshot.kpis.avgSpeed.value)}
+          bytes24h={firestoreBytes24h}
+          hourlyData={hourlyTransfers}
+        />
+        <StorageCard
+          storage={{
+            usedBytes: liveStorageBytes,
+            totalBytes: 5 * 1024 * 1024 * 1024 * 1024,
+          }}
         />
       </div>
     </div>

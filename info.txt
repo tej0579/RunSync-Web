@@ -1,0 +1,5825 @@
+// RunSync 2.0 - Complete Application Code Export
+// Generated: 2026-10-21T11:20:25.389Z
+// Total source files: 39
+
+================================================================
+// FILE: app/api/backend/[...path]/route.ts
+================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { getServerEnv } from "@/lib/env";
+import { verifyServerAuth } from "@/lib/serverAuth";
+import { checkRateLimit } from "@/lib/rateLimit";
+
+export const dynamic = "force-dynamic";
+
+// Strict allowlist of supported worker endpoint paths and their permitted HTTP methods
+const ALLOWED_ENDPOINTS: Record<string, string[]> = {
+  health: ["GET"],
+  status: ["GET"],
+  enqueue: ["POST"],
+  enqueue_hf: ["POST"],
+  shutdown: ["POST"],
+  pause: ["POST"],
+  resume: ["POST"],
+  cancel: ["POST"],
+};
+
+function getCleanEndpoint(rawSegments: string[]): string {
+  let segments = [...rawSegments];
+  if (segments[0] === "api" && segments[1] === "v1") {
+    segments = segments.slice(2);
+  } else if (segments[0] === "api") {
+    segments = segments.slice(1);
+  }
+  return segments.join("/").toLowerCase();
+}
+
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ path: string[] }> }
+) {
+  // 1. Enforce Server-Side Authentication
+  const auth = await verifyServerAuth(req);
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  const { path } = await context.params;
+  const endpoint = getCleanEndpoint(path);
+
+  // 2. Route Allowlist Validation
+  if (!ALLOWED_ENDPOINTS[endpoint]) {
+    return NextResponse.json(
+      { error: `Endpoint '/${endpoint}' is not recognized or supported by worker gateway.` },
+      { status: 404 }
+    );
+  }
+
+  if (!ALLOWED_ENDPOINTS[endpoint].includes("GET")) {
+    return NextResponse.json(
+      { error: `Method GET is not permitted for '/${endpoint}'.` },
+      { status: 405, headers: { Allow: ALLOWED_ENDPOINTS[endpoint].join(", ") } }
+    );
+  }
+
+  // 3. Resolve Target Worker URL
+  const env = getServerEnv();
+  const backendBase = env.BACKEND_URL?.replace(/\/+$/, "");
+
+  if (!backendBase) {
+    return NextResponse.json(
+      { error: "Configuration Error: BACKEND_URL is not set on the server." },
+      { status: 503 }
+    );
+  }
+
+  const search = req.nextUrl.search || "";
+  const targetUrl = `${backendBase}/api/v1/${endpoint}${search}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: "GET",
+      headers: {
+        "ngrok-skip-browser-warning": "69420",
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return NextResponse.json(
+        {
+          status: "unavailable",
+          message: `Worker returned HTTP ${res.status}`,
+          upstreamStatus: res.status,
+        },
+        { status: 502 }
+      );
+    }
+
+    const data = await res.json().catch(() => null);
+    if (!data) {
+      return NextResponse.json(
+        { status: "degraded", message: "Worker returned invalid non-JSON payload" },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch (error: any) {
+    const isTimeout = error.name === "AbortError";
+    return NextResponse.json(
+      {
+        status: "offline",
+        message: isTimeout ? "Connection to remote worker timed out" : "Unable to reach remote worker tunnel",
+        isTimeout,
+      },
+      { status: 504 }
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ path: string[] }> }
+) {
+  // 1. Enforce Server-Side Authentication
+  const auth = await verifyServerAuth(req, { requiredRole: "operator" });
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  const { path } = await context.params;
+  const endpoint = getCleanEndpoint(path);
+
+  // 2. Route Allowlist Validation
+  if (!ALLOWED_ENDPOINTS[endpoint]) {
+    return NextResponse.json(
+      { error: `Endpoint '/${endpoint}' is not recognized or supported by worker gateway.` },
+      { status: 404 }
+    );
+  }
+
+  if (!ALLOWED_ENDPOINTS[endpoint].includes("POST")) {
+    return NextResponse.json(
+      { error: `Method POST is not permitted for '/${endpoint}'.` },
+      { status: 405, headers: { Allow: ALLOWED_ENDPOINTS[endpoint].join(", ") } }
+    );
+  }
+
+  // 3. Rate Limit Enqueue and Action Commands
+  const rateLimitKey = `worker:${auth.user.uid}:${endpoint}`;
+  const rateLimit = checkRateLimit(rateLimitKey, {
+    windowMs: 60 * 1000,
+    maxRequests: endpoint.startsWith("enqueue") ? 20 : 10,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too Many Requests",
+        message: `Rate limit exceeded for '/${endpoint}'. Please slow down.`,
+        retryAfterMs: rateLimit.resetInMs,
+      },
+      { status: 429 }
+    );
+  }
+
+  // 4. Resolve Target Worker URL
+  const env = getServerEnv();
+  const backendBase = env.BACKEND_URL?.replace(/\/+$/, "");
+
+  if (!backendBase) {
+    return NextResponse.json(
+      { error: "Configuration Error: BACKEND_URL is not set on the server." },
+      { status: 503 }
+    );
+  }
+
+  const search = req.nextUrl.search || "";
+  const targetUrl = `${backendBase}/api/v1/${endpoint}${search}`;
+
+  const contentType = req.headers.get("content-type") || "";
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "69420",
+    Accept: "application/json",
+  };
+
+  let bodyPayload: any;
+
+  try {
+    if (
+      contentType.includes("multipart/form-data") ||
+      contentType.includes("application/x-www-form-urlencoded")
+    ) {
+      bodyPayload = await req.formData();
+    } else if (contentType.includes("application/json")) {
+      const rawText = await req.text();
+      // Enforce max body size 2MB
+      if (rawText.length > 2 * 1024 * 1024) {
+        return NextResponse.json({ error: "Payload Too Large (Max 2MB)" }, { status: 413 });
+      }
+      bodyPayload = rawText;
+      headers["Content-Type"] = "application/json";
+    } else {
+      bodyPayload = await req.text();
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid request payload format" }, { status: 400 });
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: "POST",
+      headers,
+      body: bodyPayload,
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  } catch (error: any) {
+    const isTimeout = error.name === "AbortError";
+    return NextResponse.json(
+      {
+        status: "error",
+        message: isTimeout ? "Worker request timed out" : "Failed to communicate with remote Codespace worker",
+        isTimeout,
+      },
+      { status: 504 }
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+
+================================================================
+// FILE: app/api/codespace/wake/route.ts
+================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { triggerCodespaceWorkflow } from "@/lib/github";
+import { verifyServerAuth } from "@/lib/serverAuth";
+import { checkRateLimit } from "@/lib/rateLimit";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
+  // 1. Enforce Server-Side Authentication & Authorization
+  const auth = await verifyServerAuth(req, { requiredRole: "operator" });
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  // 2. Enforce Rate Limiting & Cooldown (Max 2 wake attempts per 60 seconds)
+  const clientIdentifier = `wake:${auth.user.uid || req.headers.get("x-forwarded-for") || "unknown"}`;
+  const rateLimit = checkRateLimit(clientIdentifier, {
+    windowMs: 60 * 1000,
+    maxRequests: 2,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too Many Requests",
+        message: "Codespace wake is on cooldown. Please wait before triggering another wake sequence.",
+        retryAfterMs: rateLimit.resetInMs,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(rateLimit.resetInMs / 1000)),
+        },
+      }
+    );
+  }
+
+  // 3. Dispatch GitHub Actions Workflow
+  try {
+    const result = await triggerCodespaceWorkflow();
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.message || "Failed to trigger wake workflow" },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      status: "dispatched",
+      message: result.message,
+      actor: auth.user.email,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: "Failed to initiate Codespace wake sequence" },
+      { status: 500 }
+    );
+  }
+}
+
+
+================================================================
+// FILE: app/api/drive/download/route.ts
+================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { google } from "googleapis";
+import { Readable } from "stream";
+import { getServerEnv } from "@/lib/env";
+import { verifyServerAuth } from "@/lib/serverAuth";
+
+export const dynamic = "force-dynamic";
+
+function cleanPrivateKey(key?: string): string {
+  if (!key) return "";
+  let cleaned = key.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  return cleaned.replace(/\\n/g, "\n").replace(/\r/g, "").trim();
+}
+
+function getDriveClient() {
+  const env = getServerEnv();
+  const clientEmail = env.GDRIVE_CLIENT_EMAIL;
+  const rawKey = env.GDRIVE_PRIVATE_KEY;
+
+  if (!clientEmail || !rawKey) {
+    throw new Error("Google Drive credentials not configured.");
+  }
+
+  const auth = new google.auth.JWT({
+    email: clientEmail,
+    key: cleanPrivateKey(rawKey),
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+  });
+
+  return google.drive({ version: "v3", auth });
+}
+
+export async function GET(req: NextRequest) {
+  // 1. Authenticate request (supports Authorization header or ?token query param)
+  const auth = await verifyServerAuth(req);
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const fileId = searchParams.get("fileId");
+
+    if (!fileId || typeof fileId !== "string" || fileId.length < 5) {
+      return NextResponse.json({ error: "Missing or invalid fileId parameter" }, { status: 400 });
+    }
+
+    const env = getServerEnv();
+    const rootFolderId = env.GDRIVE_FOLDER_ID;
+    const drive = getDriveClient();
+
+    // 2. Fetch metadata to inspect parents and MIME type
+    const metadata = await drive.files.get({
+      fileId,
+      fields: "id, name, mimeType, size, parents, trashed",
+      supportsAllDrives: true,
+    });
+
+    if (!metadata.data || metadata.data.trashed) {
+      return NextResponse.json({ error: "File not found or was moved to trash" }, { status: 404 });
+    }
+
+    // 3. Prevent unauthorized traversal outside root folder
+    if (rootFolderId) {
+      const parents = metadata.data.parents || [];
+      // Fast check: direct parent or ancestor
+      if (parents.length > 0 && !parents.includes(rootFolderId)) {
+        // Check ancestor chain
+        let isChild = false;
+        let queue = [...parents];
+        const visited = new Set<string>();
+
+        while (queue.length > 0 && !isChild) {
+          const pid = queue.shift()!;
+          if (pid === rootFolderId) {
+            isChild = true;
+            break;
+          }
+          if (visited.has(pid)) continue;
+          visited.add(pid);
+
+          try {
+            const pMeta = await drive.files.get({
+              fileId: pid,
+              fields: "parents",
+              supportsAllDrives: true,
+            });
+            if (pMeta.data.parents) queue.push(...pMeta.data.parents);
+          } catch {
+            // Stop traversal if ancestor cannot be read
+          }
+        }
+
+        if (!isChild) {
+          return NextResponse.json(
+            { error: "Forbidden: File is outside the authorized storage tree" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // 4. Download media stream
+    const driveRes = await drive.files.get(
+      { fileId, alt: "media", supportsAllDrives: true },
+      { responseType: "stream" }
+    );
+
+    const headers = new Headers();
+    const fileName = metadata.data.name || "download";
+    headers.set(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(fileName)}"`
+    );
+    headers.set(
+      "Content-Type",
+      metadata.data.mimeType || "application/octet-stream"
+    );
+    headers.set("Cache-Control", "private, no-store, max-age=0");
+
+    if (metadata.data.size) {
+      headers.set("Content-Length", metadata.data.size);
+    }
+
+    const webStream = Readable.toWeb(driveRes.data as unknown as Readable);
+    return new Response(webStream as BodyInit, { headers });
+  } catch (error: any) {
+    console.error("[Drive Download Error]", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to download file from Google Drive" },
+      { status: 500 }
+    );
+  }
+}
+
+
+================================================================
+// FILE: app/api/drive/route.ts
+================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { google } from "googleapis";
+import { getServerEnv } from "@/lib/env";
+import { verifyServerAuth } from "@/lib/serverAuth";
+
+export const dynamic = "force-dynamic";
+
+function cleanPrivateKey(key?: string): string {
+  if (!key) return "";
+  let cleaned = key.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  return cleaned.replace(/\\n/g, "\n").replace(/\r/g, "").trim();
+}
+
+function getDriveClient() {
+  const env = getServerEnv();
+  const clientEmail = env.GDRIVE_CLIENT_EMAIL;
+  const privateKey = cleanPrivateKey(env.GDRIVE_PRIVATE_KEY);
+
+  if (!clientEmail || !privateKey) {
+    throw new Error("Missing Google Drive credentials in environment (GDRIVE_CLIENT_EMAIL / GDRIVE_PRIVATE_KEY)");
+  }
+
+  const auth = new google.auth.JWT({
+    email: clientEmail,
+    key: privateKey,
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+  });
+
+  return google.drive({ version: "v3", auth });
+}
+
+// In-memory cache for Drive file listing to avoid quota exhaustion from rapid polling
+interface DriveCache {
+  data: any;
+  timestamp: number;
+}
+const cacheStore = new Map<string, DriveCache>();
+const CACHE_TTL_MS = 15000; // 15 seconds cache
+
+export async function GET(req: NextRequest) {
+  // 1. Authenticate caller
+  const auth = await verifyServerAuth(req);
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  try {
+    const env = getServerEnv();
+    const rootFolderId = env.GDRIVE_FOLDER_ID;
+
+    if (!rootFolderId) {
+      return NextResponse.json(
+        { error: "Configuration Error: GDRIVE_FOLDER_ID is not configured." },
+        { status: 500 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const requestedFolderId = searchParams.get("folderId") || rootFolderId;
+    const search = searchParams.get("search");
+
+    const cacheKey = `drive:${requestedFolderId}:${search || ""}`;
+    const cached = cacheStore.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return NextResponse.json(cached.data);
+    }
+
+    const drive = getDriveClient();
+
+    // 2. Fetch files with full pagination
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+    let pageCount = 0;
+    const maxPages = 5; // Safety cap at 5,000 items
+
+    do {
+      const listResponse: any = await drive.files.list({
+        q: "trashed = false",
+        fields: "nextPageToken, files(id, name, mimeType, size, parents, modifiedTime, webViewLink, iconLink)",
+        pageSize: 1000,
+        pageToken,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      });
+
+      if (listResponse.data.files) {
+        allFiles.push(...listResponse.data.files);
+      }
+      pageToken = listResponse.data.nextPageToken || undefined;
+      pageCount++;
+    } while (pageToken && pageCount < maxPages);
+
+    // 3. Build ancestor and parent map to enforce root folder boundary
+    const parentMap = new Map<string, string[]>();
+    for (const item of allFiles) {
+      if (item.id && item.parents) {
+        parentMap.set(item.id, item.parents);
+      }
+    }
+
+    // Helper to verify if an item belongs under rootFolderId
+    const isDescendantOfRoot = (itemId: string): boolean => {
+      if (itemId === rootFolderId) return true;
+      const visited = new Set<string>();
+      let queue = parentMap.get(itemId) ? [...(parentMap.get(itemId) || [])] : [];
+
+      while (queue.length > 0) {
+        const parentId = queue.shift()!;
+        if (parentId === rootFolderId) return true;
+        if (visited.has(parentId)) continue;
+        visited.add(parentId);
+        const grandparents = parentMap.get(parentId);
+        if (grandparents) queue.push(...grandparents);
+      }
+      return false;
+    };
+
+    // Verify requested folder belongs to authorized root tree
+    if (requestedFolderId !== rootFolderId && !isDescendantOfRoot(requestedFolderId)) {
+      return NextResponse.json(
+        { error: "Forbidden: Requested folder is outside the authorized storage tree." },
+        { status: 403 }
+      );
+    }
+
+    // 4. Calculate real sizes and rolling time window totals
+    const now = Date.now();
+    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+    const startOfTodayMs = new Date().setUTCHours(0, 0, 0, 0);
+
+    let bytes24h = 0;
+    let bytesToday = 0;
+    let totalStorageBytes = 0;
+    const folderSizeMap = new Map<string, number>();
+
+    for (const item of allFiles) {
+      // Only account for files within the authorized root scope
+      if (!isDescendantOfRoot(item.id || "")) continue;
+
+      const isFolder = item.mimeType === "application/vnd.google-apps.folder";
+      if (!isFolder && item.size) {
+        const bytes = parseInt(item.size, 10) || 0;
+        totalStorageBytes += bytes;
+
+        const modTime = item.modifiedTime ? new Date(item.modifiedTime).getTime() : 0;
+        if (modTime >= twentyFourHoursAgo) bytes24h += bytes;
+        if (modTime >= startOfTodayMs) bytesToday += bytes;
+
+        // Bubble up bytes to ancestor folders
+        let queue = item.parents ? [...item.parents] : [];
+        const visited = new Set<string>();
+
+        while (queue.length > 0) {
+          const parentId = queue.shift()!;
+          if (visited.has(parentId)) continue;
+          visited.add(parentId);
+
+          folderSizeMap.set(parentId, (folderSizeMap.get(parentId) || 0) + bytes);
+          const grandparents = parentMap.get(parentId);
+          if (grandparents) queue.push(...grandparents);
+        }
+      }
+    }
+
+    // 5. Filter items for display
+    let displayItems: any[] = [];
+    if (search && search.trim()) {
+      const term = search.trim().toLowerCase();
+      displayItems = allFiles.filter(
+        (item) => isDescendantOfRoot(item.id || "") && (item.name || "").toLowerCase().includes(term)
+      );
+    } else {
+      displayItems = allFiles.filter(
+        (item) => item.parents && item.parents.includes(requestedFolderId)
+      );
+    }
+
+    const files = displayItems.map((file) => {
+      const isFolder = file.mimeType === "application/vnd.google-apps.folder";
+      const sizeBytes = isFolder
+        ? folderSizeMap.get(file.id || "") || 0
+        : file.size
+        ? parseInt(file.size, 10)
+        : 0;
+
+      return {
+        id: file.id || "",
+        name: file.name || "Untitled",
+        mimeType: file.mimeType || "",
+        isFolder,
+        sizeBytes,
+        modifiedTime: file.modifiedTime || new Date().toISOString(),
+        webViewLink: file.webViewLink || "",
+        iconLink: file.iconLink || "",
+      };
+    });
+
+    const folderStorage = folderSizeMap.get(requestedFolderId);
+    const directChildrenCount = displayItems.length;
+
+    const responsePayload = {
+      success: true,
+      folderId: requestedFolderId,
+      totalStorageBytes: typeof folderStorage === "number" ? folderStorage : totalStorageBytes,
+      bytes24h,
+      bytesToday,
+      totalCompletedCount: directChildrenCount,
+      files,
+    };
+
+    cacheStore.set(cacheKey, { data: responsePayload, timestamp: Date.now() });
+    return NextResponse.json(responsePayload);
+  } catch (error: any) {
+    console.error("[Drive API Error]", error);
+    return NextResponse.json(
+      { error: "Failed to query Google Drive API" },
+      { status: 500 }
+    );
+  }
+}
+
+
+================================================================
+// FILE: app/api/metrics/route.ts
+================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  increment,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { verifyServerAuth } from "@/lib/serverAuth";
+import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+
+const taskCompletionSchema = z.object({
+  taskId: z.string().min(1, "taskId is required for idempotent completion recording"),
+  bytes: z.number().int().nonnegative("bytes must be a non-negative integer"),
+  name: z.string().optional(),
+  source: z.string().optional(),
+});
+
+export async function GET(req: NextRequest) {
+  // 1. Authenticate request
+  const auth = await verifyServerAuth(req);
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  try {
+    const docRef = doc(db, "analytics", "dashboard");
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists()) {
+      return NextResponse.json({
+        completed_count: 0,
+        total_bytes_extracted: 0,
+        hourly_transfers: {},
+      });
+    }
+
+    return NextResponse.json(snap.data());
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to load metrics" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  // 1. Authenticate and authorize operator
+  const auth = await verifyServerAuth(req, { requiredRole: "operator" });
+  if (!auth.authorized) {
+    return auth.response;
+  }
+
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  // 2. Validate input schema with Zod
+  const parseResult = taskCompletionSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: "Validation Error", details: parseResult.error.format() },
+      { status: 400 }
+    );
+  }
+
+  const { taskId, bytes, name, source } = parseResult.data;
+
+  try {
+    // 3. Idempotency Check: Verify task hasn't already been committed
+    const taskLogRef = doc(db, "completed_tasks", taskId);
+    const existingTask = await getDoc(taskLogRef);
+
+    if (existingTask.exists()) {
+      return NextResponse.json({
+        success: true,
+        message: "Task completion was already recorded (idempotent skip).",
+        duplicate: true,
+      });
+    }
+
+    // 4. Record task completion document atomically
+    await setDoc(taskLogRef, {
+      taskId,
+      bytes,
+      name: name || "Unnamed Task",
+      source: source || "Cloud Stream",
+      recordedBy: auth.user.email,
+      completedAt: serverTimestamp(),
+    });
+
+    // 5. Update aggregate dashboard statistics
+    const dashboardRef = doc(db, "analytics", "dashboard");
+    const currentHour = new Date().getUTCHours().toString().padStart(2, "0");
+
+    try {
+      await updateDoc(dashboardRef, {
+        completed_count: increment(1),
+        total_bytes_extracted: increment(bytes),
+        [`hourly_transfers.${currentHour}`]: increment(bytes),
+        last_updated: serverTimestamp(),
+      });
+    } catch (err: any) {
+      if (err.code === "not-found") {
+        await setDoc(dashboardRef, {
+          completed_count: 1,
+          total_bytes_extracted: bytes,
+          hourly_transfers: { [currentHour]: bytes },
+          last_updated: serverTimestamp(),
+        });
+      } else {
+        throw err;
+      }
+    }
+
+    return NextResponse.json({ success: true, taskId, bytesRecorded: bytes });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to commit metrics record" },
+      { status: 500 }
+    );
+  }
+}
+
+
+================================================================
+// FILE: app/layout.tsx
+================================================================
+
+import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { AuthGate } from "@/components/layout/AuthGate";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
+export const metadata: Metadata = {
+  title: "RunSync 2.0 — Cloud Extraction & Storage",
+  description: "High-performance dataset and torrent cloud extraction pipeline",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="dark h-full">
+      <body
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-[#080C14] text-slate-100 antialiased h-[100dvh] max-h-[100dvh] flex flex-col md:flex-row overflow-hidden`}
+      >
+        <AuthGate>
+          {/* Navigation: Responsive Topbar + Slide Drawer on Mobile, Fixed Sidebar on Desktop */}
+          <Sidebar />
+
+          {/* Independent Scrollable Content Area with Safe Bottom Padding */}
+          <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-y-auto overscroll-y-contain">
+            <main className="flex-1 px-3.5 sm:px-6 md:px-8 pt-5 sm:pt-6 pb-36 sm:pb-28 md:pb-16 max-w-7xl w-full mx-auto">
+              {children}
+            </main>
+          </div>
+        </AuthGate>
+      </body>
+    </html>
+  );
+}
+
+
+================================================================
+// FILE: app/page.tsx
+================================================================
+
+"use client";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
+import { MetricsRow } from "@/components/dashboard/MetricsRow";
+import { ExtractionCard, SourceBadge, ExecutionMode } from "@/components/dashboard/ExtractionCard";
+import { AnalyticsGrid } from "@/components/dashboard/AnalyticsGrid";
+import { StorageCard } from "@/components/dashboard/StorageCard";
+import { ActiveTransfers } from "@/components/dashboard/ActiveTransfers";
+import { ServerWakeModal } from "@/components/dashboard/ServerWakeModal";
+import { useCodespaceStatus } from "@/hooks/useCodespaceStatus";
+import { useTelemetry } from "@/hooks/useTelemetry";
+import { CheckCircle2, AlertTriangle, Loader2, X } from "lucide-react";
+import { getAuthHeaders } from "@/lib/clientAuth";
+
+export default function DashboardPage() {
+  const { isOnline, isBooting, cluster, checkStatus, wakeUpCodespace } = useCodespaceStatus(5000);
+  const [liveStorageBytes, setLiveStorageBytes] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const [showWakeModal, setShowWakeModal] = useState<boolean>(false);
+  const pendingExtractionRef = useRef<{
+    url: string;
+    source: SourceBadge;
+    mode: ExecutionMode;
+  } | null>(null);
+
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Queries Google Drive solely for the Storage Usage gauge
+  const refreshStorageMetrics = useCallback(async () => {
+    try {
+      const folderId =
+        process.env.NEXT_PUBLIC_GDRIVE_FOLDER_ID || "1W5rVvmzDA5hpFEH8Sd53IyLb9R-bmY9O";
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/drive?folderId=${encodeURIComponent(folderId)}`, {
+        cache: "no-store",
+        headers,
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const total =
+        typeof data.totalStorageBytes === "number"
+          ? data.totalStorageBytes
+          : (data.files || []).reduce(
+              (acc: number, curr: any) => acc + (curr.sizeBytes || 0),
+              0
+            );
+
+      setLiveStorageBytes(total);
+    } catch {
+      // Preserve existing readings on network drop
+    }
+  }, []);
+
+  const {
+    snapshot,
+    firestoreBytes24h,
+    firestoreTotalBytes,
+    firestoreBytesToday,
+    hourlyTransfers,
+    triggerExtraction,
+    pauseTask,
+    resumeTask,
+    cancelTask,
+  } = useTelemetry(isOnline, refreshStorageMetrics);
+
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: "success" | "info" | "warning";
+    message: string;
+  }>({
+    show: false,
+    type: "info",
+    message: "",
+  });
+
+  const showToast = useCallback(
+    (message: string, type: "success" | "info" | "warning" = "info", duration = 4500) => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+      setToast({ show: true, type, message });
+      if (duration > 0) {
+        toastTimerRef.current = setTimeout(() => {
+          setToast((prev) => ({ ...prev, show: false }));
+        }, duration);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    refreshStorageMetrics();
+    const interval = setInterval(refreshStorageMetrics, 20000);
+    return () => clearInterval(interval);
+  }, [refreshStorageMetrics]);
+
+  const detectPayloadType = (
+    input: string,
+    forcedBadge: SourceBadge
+  ): "huggingface" | "academic_torrent" => {
+    if (forcedBadge === "hf") return "huggingface";
+    if (forcedBadge === "academic") return "academic_torrent";
+
+    const clean = input.trim().toLowerCase();
+    const isTorrentPattern =
+      clean.startsWith("magnet:?") ||
+      clean.includes("academictorrents.com") ||
+      clean.endsWith(".torrent") ||
+      (clean.length === 40 && /^[0-9a-f]+$/i.test(clean));
+
+    if (isTorrentPattern) return "academic_torrent";
+    return "huggingface";
+  };
+
+  const handleLocalBrowserFetch = async (targetUrl: string, detectedEngine: string) => {
+    setIsSubmitting(true);
+    try {
+      if (detectedEngine === "huggingface") {
+        showToast("Resolving Hugging Face repository metadata locally...", "info", 2000);
+
+        const raw = targetUrl.trim();
+        const isDataset = raw.includes("/datasets/");
+        const cleanId = raw
+          .replace("https://huggingface.co/datasets/", "")
+          .replace("https://huggingface.co/", "")
+          .split("/tree/")[0]
+          .split("/blob/")[0]
+          .trim();
+
+        const endpoint = `https://huggingface.co/api/${isDataset ? "datasets" : "models"}/${encodeURIComponent(cleanId)}/tree/main?recursive=true`;
+
+        const res = await fetch(endpoint, {
+          headers: { Accept: "application/json" },
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Gated access restricted. Accept model terms on Hugging Face first or use Cloud Extract mode.");
+        }
+
+        if (!res.ok) {
+          throw new Error("Repository not found or network connection refused.");
+        }
+
+        const files = await res.json();
+        const fileItems = files.filter((f: any) => f.type === "file");
+
+        if (fileItems.length === 0) {
+          throw new Error("No files discovered in this repository.");
+        }
+
+        showToast(`Discovered ${fileItems.length} files. Initiating direct browser download...`, "success", 4000);
+
+        const filesToDownload = files.filter((f: any) => f.type === "file").slice(0, 5);
+        for (let idx = 0; idx < filesToDownload.length; idx++) {
+          const f = filesToDownload[idx];
+          const dlUrl = `https://huggingface.co/${isDataset ? "datasets/" : ""}${cleanId}/resolve/main/${f.path}`;
+          const a = document.createElement("a");
+          a.href = dlUrl;
+          a.download = f.path.split("/").pop() || "download";
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          if (idx < filesToDownload.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
+        }
+
+        if (fileItems.length > 5) {
+          showToast(`Started top 5 files. Switch to Cloud Extract for the entire model archive.`, "info", 6000);
+        }
+      } else {
+        showToast("Opening magnet link in your BitTorrent desktop client...", "info", 3000);
+        window.location.href = targetUrl;
+      }
+    } catch (err: any) {
+      showToast(`Local Fetch error: ${err.message || "Failed to download"}`, "warning", 5000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const dispatchExtractionPayload = async (payload: {
+    url: string;
+    source: SourceBadge;
+    mode: ExecutionMode;
+  }) => {
+    const targetUrl = payload.url.trim();
+    if (!targetUrl) return;
+
+    setIsSubmitting(true);
+    const detectedEngine = detectPayloadType(targetUrl, payload.source);
+
+    try {
+      showToast("Dispatching task to active cloud pipeline...", "info", 2000);
+
+      const result = await triggerExtraction({
+        url: targetUrl,
+        detectionMode: detectedEngine,
+        pipelineMode: "cloud_extract",
+      });
+
+      const responseStatus = (result.status as string) || "";
+
+      if (responseStatus === "success") {
+        showToast(result.message || "Extraction armed! Streaming to Drive.", "success", 5000);
+      } else if (responseStatus === "queued") {
+        showToast(result.message || "Task queued. Waiting for local scratch slot.", "info", 5000);
+      } else if (responseStatus === "ignored") {
+        showToast("Worker is currently busy processing another pipeline.", "warning", 5000);
+      } else {
+        showToast(result.message || "Task registered with the worker engine.", "info", 4000);
+      }
+    } catch (err: any) {
+      showToast(`Dispatch failed: ${err.message || "Network unreachable"}`, "warning", 6000);
+    } finally {
+      setIsSubmitting(false);
+      pendingExtractionRef.current = null;
+    }
+  };
+
+  const handleExtractSubmit = async (payload: {
+    url: string;
+    source: SourceBadge;
+    mode: ExecutionMode;
+  }) => {
+    const targetUrl = payload.url.trim();
+    if (!targetUrl) return;
+
+    const detectedEngine = detectPayloadType(targetUrl, payload.source);
+
+    if (payload.mode === "local") {
+      await handleLocalBrowserFetch(targetUrl, detectedEngine);
+      return;
+    }
+
+    if (payload.mode === "cloud" && !isOnline) {
+      pendingExtractionRef.current = payload;
+      setShowWakeModal(true);
+      return;
+    }
+
+    await dispatchExtractionPayload(payload);
+  };
+
+  const handleConfirmWake = async () => {
+    setShowWakeModal(false);
+    showToast("Boot signal dispatched. Spawning Codespace container...", "info", 0);
+
+    try {
+      await wakeUpCodespace();
+
+      let attempts = 0;
+      let backendReady = false;
+
+      while (attempts < 20) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const alive = await checkStatus();
+        if (alive) {
+          backendReady = true;
+          break;
+        }
+        attempts++;
+      }
+
+      if (backendReady) {
+        showToast("Codespace is online! Tunnel established.", "success", 3000);
+        if (pendingExtractionRef.current) {
+          await dispatchExtractionPayload(pendingExtractionRef.current);
+        }
+      } else {
+        showToast("Boot timed out. Check GitHub Actions workflow runs.", "warning", 6000);
+        pendingExtractionRef.current = null;
+      }
+    } catch (err: any) {
+      showToast(`Wake sequence failed: ${err.message || "Error"}`, "warning", 6000);
+      pendingExtractionRef.current = null;
+    }
+  };
+
+  return (
+    <div className="space-y-4 md:space-y-5 pb-8 sm:pb-6 relative">
+      <ServerWakeModal
+        isOpen={showWakeModal}
+        isBooting={isBooting}
+        onClose={() => {
+          setShowWakeModal(false);
+          pendingExtractionRef.current = null;
+        }}
+        onConfirmWake={handleConfirmWake}
+      />
+
+      {toast.show && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0D1424] border border-[#1E2C48] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
+        >
+          {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+          {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
+          {toast.type === "info" && <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />}
+          <span className="flex-1 leading-normal">{toast.message}</span>
+          <button
+            onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+            className="text-slate-500 hover:text-slate-300 ml-1"
+            aria-label="Dismiss message"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Row 1: Greeting & System Status Pill */}
+      <WelcomeBanner
+        userName="Saiteja"
+        isOnline={isOnline}
+        isBooting={isBooting}
+        cluster={cluster}
+        onWake={wakeUpCodespace}
+      />
+
+      {/* Row 2: KPI Metrics Cards */}
+      <MetricsRow
+        metrics={snapshot.kpis}
+        liveExtractedBytes={firestoreTotalBytes}
+        liveBytesToday={firestoreBytesToday}
+      />
+
+      {/* Row 3: Action Center */}
+      <div className="w-full">
+        <ExtractionCard onExtract={handleExtractSubmit} isSubmitting={isSubmitting} />
+      </div>
+
+      {/* Row 4: Operations / Active Transfers List (Placed immediately under Extraction Card for direct live progress visibility) */}
+      <div className="w-full">
+        <ActiveTransfers
+          tasks={snapshot.tasks}
+          onPause={pauseTask}
+          onResume={resumeTask}
+          onCancel={cancelTask}
+        />
+      </div>
+
+      {/* Row 5: Analytics Grid & Storage Card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+        <AnalyticsGrid
+          speedHistory={snapshot.speedHistory}
+          currentSpeed={String(snapshot.kpis.avgSpeed.value)}
+          bytes24h={firestoreBytes24h}
+          hourlyData={hourlyTransfers}
+        />
+        <StorageCard
+          storage={{
+            usedBytes: liveStorageBytes,
+            totalBytes: 5 * 1024 * 1024 * 1024 * 1024,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+
+================================================================
+// FILE: app/storage/page.tsx
+================================================================
+
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  HardDrive,
+  Folder,
+  FileText,
+  DownloadCloud,
+  RefreshCw,
+  ExternalLink,
+  Search,
+  Loader2,
+  AlertCircle,
+  ChevronRight,
+  ChevronDown,
+  X,
+  FileCode,
+  FileArchive,
+  Film,
+  Database,
+  Binary,
+} from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { formatBytes } from "@/lib/utils";
+import { getAuthHeaders, getAuthToken } from "@/lib/clientAuth";
+
+interface DriveItem {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  sizeFormatted: string;
+  modifiedFormatted: string;
+  mimeType: string;
+  webViewLink?: string;
+  downloadUrl?: string;
+  isFolder: boolean;
+  children?: DriveItem[];
+  isLoadingChildren?: boolean;
+}
+
+const GDRIVE_FOLDER_ID =
+  process.env.NEXT_PUBLIC_GDRIVE_FOLDER_ID || "1W5rVvmzDA5hpFEH8Sd53IyLb9R-bmY9O";
+
+function getFileIcon(name: string, mimeType: string) {
+  const lower = name.toLowerCase();
+
+  if (
+    lower.endsWith(".safetensors") ||
+    lower.endsWith(".bin") ||
+    lower.endsWith(".pt") ||
+    lower.endsWith(".pth") ||
+    lower.endsWith(".onnx") ||
+    lower.endsWith(".gguf")
+  ) {
+    return <Binary className="w-4 h-4 text-purple-400 shrink-0" />;
+  }
+
+  if (
+    lower.endsWith(".parquet") ||
+    lower.endsWith(".arrow") ||
+    lower.endsWith(".csv") ||
+    lower.endsWith(".json") ||
+    lower.endsWith(".jsonl")
+  ) {
+    return <Database className="w-4 h-4 text-emerald-400 shrink-0" />;
+  }
+
+  if (
+    lower.endsWith(".mkv") ||
+    lower.endsWith(".mp4") ||
+    lower.endsWith(".avi") ||
+    lower.endsWith(".mov") ||
+    mimeType.startsWith("video/")
+  ) {
+    return <Film className="w-4 h-4 text-amber-400 shrink-0" />;
+  }
+
+  if (
+    lower.endsWith(".zip") ||
+    lower.endsWith(".tar") ||
+    lower.endsWith(".gz") ||
+    lower.endsWith(".7z") ||
+    lower.endsWith(".rar")
+  ) {
+    return <FileArchive className="w-4 h-4 text-rose-400 shrink-0" />;
+  }
+
+  if (
+    lower.endsWith(".py") ||
+    lower.endsWith(".ts") ||
+    lower.endsWith(".js") ||
+    lower.endsWith(".sh") ||
+    lower.endsWith(".yaml") ||
+    lower.endsWith(".yml")
+  ) {
+    return <FileCode className="w-4 h-4 text-cyan-400 shrink-0" />;
+  }
+
+  return <FileText className="w-4 h-4 text-slate-400 shrink-0" />;
+}
+
+function DriveRow({
+  item,
+  depth = 0,
+  expandedFolders,
+  onToggleFolder,
+  onDownload,
+}: {
+  item: DriveItem;
+  depth?: number;
+  expandedFolders: Record<string, boolean>;
+  onToggleFolder: (item: DriveItem) => void;
+  onDownload: (item: DriveItem) => void;
+}) {
+  const isExpanded = !!expandedFolders[item.id];
+  const paddingLeftPx = 12 + depth * 18;
+
+  return (
+    <>
+      <tr
+        className={`hover:bg-[#101726] transition-colors text-slate-200 border-b border-[#151D2E]/50 ${
+          depth > 0 ? "bg-[#080D18]" : ""
+        }`}
+      >
+        <td
+          style={{ paddingLeft: `${paddingLeftPx}px` }}
+          className="py-2.5 pr-3 flex items-center gap-2 max-w-[200px] sm:max-w-none"
+        >
+          {item.isFolder ? (
+            <button
+              onClick={() => onToggleFolder(item)}
+              className="p-1 -ml-1 text-slate-400 hover:text-white rounded hover:bg-[#1C273C] transition-colors"
+              title={isExpanded ? "Collapse folder" : "Expand folder"}
+            >
+              {isExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5 text-blue-400" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </button>
+          ) : (
+            <div className="w-3.5 shrink-0" />
+          )}
+
+          {item.isFolder ? (
+            <Folder
+              onClick={() => onToggleFolder(item)}
+              className="w-4 h-4 text-blue-400 shrink-0 cursor-pointer"
+            />
+          ) : (
+            getFileIcon(item.name, item.mimeType)
+          )}
+
+          <span
+            onClick={() => item.isFolder && onToggleFolder(item)}
+            className={`font-medium truncate text-xs ${
+              item.isFolder ? "cursor-pointer hover:text-blue-300" : ""
+            }`}
+            title={item.name}
+          >
+            {item.name}
+          </span>
+        </td>
+
+        <td className="py-2.5 px-3 font-mono text-slate-400 text-[11px] sm:text-xs whitespace-nowrap">
+          {item.sizeFormatted}
+        </td>
+        <td className="py-2.5 px-3 text-slate-400 text-[11px] sm:text-xs whitespace-nowrap">
+          {item.modifiedFormatted}
+        </td>
+        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+          <div className="flex items-center justify-end gap-1">
+            {!item.isFolder && (
+              <button
+                type="button"
+                onClick={() => onDownload(item)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#18233C] transition-all inline-flex items-center"
+                title="Direct download file"
+              >
+                <DownloadCloud className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {item.webViewLink && (
+              <a
+                href={item.webViewLink}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-[#18233C] transition-all inline-flex items-center"
+                title={
+                  item.isFolder
+                    ? "Open folder in Google Drive"
+                    : "Preview on Google Drive"
+                }
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+        </td>
+      </tr>
+
+      {isExpanded && (
+        <>
+          {item.isLoadingChildren ? (
+            <tr className="bg-[#090E1A]">
+              <td
+                colSpan={4}
+                style={{ paddingLeft: `${paddingLeftPx + 24}px` }}
+                className="py-2.5 pr-3 text-slate-400"
+              >
+                <div className="flex items-center gap-2 font-mono text-[10px]">
+                  <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                  <span>Loading contents...</span>
+                </div>
+              </td>
+            </tr>
+          ) : !item.children || item.children.length === 0 ? (
+            <tr className="bg-[#090E1A]">
+              <td
+                colSpan={4}
+                style={{ paddingLeft: `${paddingLeftPx + 24}px` }}
+                className="py-2 pr-3 text-slate-500 italic text-[10px]"
+              >
+                (Empty folder)
+              </td>
+            </tr>
+          ) : (
+            item.children.map((child) => (
+              <DriveRow
+                key={child.id}
+                item={child}
+                depth={depth + 1}
+                expandedFolders={expandedFolders}
+                onToggleFolder={onToggleFolder}
+                onDownload={onDownload}
+              />
+            ))
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+export default function StoragePage() {
+  const [rootFiles, setRootFiles] = useState<DriveItem[]>([]);
+  const [searchResults, setSearchResults] = useState<DriveItem[] | null>(null);
+  const [totalDriveBytes, setTotalDriveBytes] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+
+  const TOTAL_CAPACITY_BYTES = 5 * 1024 * 1024 * 1024 * 1024; // 5 TB
+
+  const parseItems = (rawList: any[]): DriveItem[] => {
+    return rawList.map((f: any) => ({
+      id: f.id,
+      name: f.name,
+      sizeBytes: f.sizeBytes || 0,
+      sizeFormatted: f.sizeBytes > 0 ? formatBytes(f.sizeBytes) : f.isFolder ? "-" : "0 B",
+      modifiedFormatted: f.modifiedTime
+        ? new Date(f.modifiedTime).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })
+        : "Unknown",
+      mimeType: f.mimeType || "application/octet-stream",
+      webViewLink: f.webViewLink,
+      downloadUrl: f.downloadUrl,
+      isFolder: !!f.isFolder,
+      children: [],
+      isLoadingChildren: false,
+    }));
+  };
+
+  const fetchLiveDriveFiles = useCallback(async () => {
+    try {
+      setErrorMsg(null);
+      const headers = await getAuthHeaders();
+      const response = await fetch(
+        `/api/drive?folderId=${encodeURIComponent(GDRIVE_FOLDER_ID)}`,
+        {
+          cache: "no-store",
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || `HTTP error ${response.status}`);
+      }
+
+      const data = await response.json();
+      const parsed = parseItems(data.files || []);
+      setRootFiles(parsed);
+
+      if (typeof data.totalStorageBytes === "number") {
+        setTotalDriveBytes(data.totalStorageBytes);
+      } else {
+        setTotalDriveBytes(parsed.reduce((acc, curr) => acc + curr.sizeBytes, 0));
+      }
+    } catch (err: any) {
+      console.error("Drive fetch error:", err);
+      setErrorMsg(err.message || "Failed to load files from Google Drive");
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveDriveFiles();
+  }, [fetchLiveDriveFiles]);
+
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+    if (!trimmed) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    let isCurrent = true;
+    const controller = new AbortController();
+
+    setIsSearching(true);
+    const delayTimer = setTimeout(async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(
+          `/api/drive?search=${encodeURIComponent(trimmed)}&folderId=${encodeURIComponent(
+            GDRIVE_FOLDER_ID
+          )}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+            headers,
+          }
+        );
+        if (!res.ok) throw new Error("Search failed");
+        const data = await res.json();
+
+        if (isCurrent) {
+          setSearchResults(parseItems(data.files || []));
+        }
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Search query error:", err);
+        }
+      } finally {
+        if (isCurrent) {
+          setIsSearching(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      isCurrent = false;
+      controller.abort();
+      clearTimeout(delayTimer);
+    };
+  }, [searchTerm]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setSearchTerm("");
+    setSearchResults(null);
+    fetchLiveDriveFiles();
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    setSearchResults(null);
+    setIsSearching(false);
+  };
+
+  const handleDownload = async (item: DriveItem) => {
+    try {
+      const token = await getAuthToken();
+      const url = `/api/drive/download?fileId=${encodeURIComponent(item.id)}&name=${encodeURIComponent(
+        item.name
+      )}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = item.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Download failed:", err);
+    }
+  };
+
+  const updateTreeWithChildren = (
+    list: DriveItem[],
+    targetId: string,
+    children: DriveItem[],
+    isLoading: boolean
+  ): DriveItem[] => {
+    return list.map((node) => {
+      if (node.id === targetId) {
+        return { ...node, children, isLoadingChildren: isLoading };
+      }
+      if (node.children && node.children.length > 0) {
+        return {
+          ...node,
+          children: updateTreeWithChildren(node.children, targetId, children, isLoading),
+        };
+      }
+      return node;
+    });
+  };
+
+  const setTreeLoading = (
+    list: DriveItem[],
+    targetId: string,
+    isLoading: boolean
+  ): DriveItem[] => {
+    return list.map((node) => {
+      if (node.id === targetId) {
+        return { ...node, isLoadingChildren: isLoading };
+      }
+      if (node.children && node.children.length > 0) {
+        return {
+          ...node,
+          children: setTreeLoading(node.children, targetId, isLoading),
+        };
+      }
+      return node;
+    });
+  };
+
+  const handleToggleFolder = async (item: DriveItem) => {
+    const isCurrentlyExpanded = !!expandedFolders[item.id];
+
+    setExpandedFolders((prev) => ({
+      ...prev,
+      [item.id]: !isCurrentlyExpanded,
+    }));
+
+    if (!isCurrentlyExpanded && (!item.children || item.children.length === 0)) {
+      const updateList = (fn: (prev: DriveItem[]) => DriveItem[]) => {
+        setRootFiles((prev) => fn(prev));
+        setSearchResults((prev) => (prev ? fn(prev) : null));
+      };
+
+      updateList((prev) => setTreeLoading(prev, item.id, true));
+
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/drive?folderId=${encodeURIComponent(item.id)}`, {
+          cache: "no-store",
+          headers,
+        });
+        const subData = await res.json();
+        const parsedChildren = parseItems(subData.files || []);
+
+        updateList((prev) =>
+          updateTreeWithChildren(prev, item.id, parsedChildren, false)
+        );
+      } catch {
+        updateList((prev) => setTreeLoading(prev, item.id, false));
+      }
+    }
+  };
+
+  const usedPercentage = Math.min(
+    parseFloat(((totalDriveBytes / TOTAL_CAPACITY_BYTES) * 100).toFixed(1)),
+    100
+  );
+  const remainingBytes = Math.max(TOTAL_CAPACITY_BYTES - totalDriveBytes, 0);
+
+  const isSearchActive = searchTerm.trim().length > 0 && searchResults !== null;
+  const displayedFiles = isSearchActive ? searchResults : rootFiles;
+
+  return (
+    <div className="space-y-4 sm:space-y-6 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2 sm:gap-2.5">
+            <HardDrive className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
+            <span>Google Drive Storage</span>
+          </h1>
+          <p className="text-[11px] sm:text-xs md:text-sm text-slate-400 mt-0.5 sm:mt-1">
+            Browse and manage files streamed directly through Rclone.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 h-8 text-xs"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-slate-400 ${
+                isRefreshing ? "animate-spin text-blue-400" : ""
+              }`}
+            />
+            <span>Refresh</span>
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() =>
+              window.open(
+                GDRIVE_FOLDER_ID
+                  ? `https://drive.google.com/drive/folders/${GDRIVE_FOLDER_ID}`
+                  : "https://drive.google.com",
+                "_blank",
+                "noopener,noreferrer"
+              )
+            }
+            className="flex items-center gap-1.5 h-8 text-xs"
+          >
+            <span>Open in Drive</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {errorMsg && (
+        <div className="p-3 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+          <div>
+            <span className="font-semibold">Notice: </span>
+            {errorMsg}
+          </div>
+        </div>
+      )}
+
+      {/* Quota Overview (5 TB) */}
+      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] sm:text-xs text-slate-400 font-medium">
+              Destination Folder Storage
+            </div>
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans mt-0.5">
+              {formatBytes(totalDriveBytes)}{" "}
+              <span className="text-xs sm:text-sm text-slate-400 font-normal">/ 5 TB</span>
+            </div>
+          </div>
+          <div>
+            <span className="text-[10px] sm:text-xs font-mono font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 whitespace-nowrap">
+              {usedPercentage}% Used
+            </span>
+          </div>
+        </div>
+
+        <Progress
+          value={usedPercentage}
+          height="h-1.5 sm:h-2"
+          indicatorColor="bg-gradient-to-r from-sky-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+        />
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 text-[10px] sm:text-xs border-t border-[#151D2E]/80">
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-[#070B14] border border-[#1A263D]">
+            <span className="text-slate-400 truncate block">Extracted</span>
+            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate">
+              {formatBytes(totalDriveBytes)}
+            </div>
+          </div>
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-[#070B14] border border-[#1A263D]">
+            <span className="text-slate-400 truncate block">Folders</span>
+            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate">
+              {rootFiles.length} Item(s)
+            </div>
+          </div>
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-[#070B14] border border-[#1A263D]">
+            <span className="text-slate-400 truncate block">Remaining</span>
+            <div className="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5 truncate">
+              {formatBytes(remainingBytes)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Drive File Browser & Search */}
+      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="relative flex-1 max-w-sm">
+            {isSearching ? (
+              <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin absolute left-3 top-1/2 -translate-y-1/2" />
+            ) : (
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            )}
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") handleClearSearch();
+              }}
+              placeholder="Search across all files & folders..."
+              className="w-full bg-[#070B14] border border-[#1A263D] focus:border-blue-500 rounded-xl pl-9 pr-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <span className="text-[11px] sm:text-xs text-slate-400 font-mono">
+            {isSearchActive
+              ? `${displayedFiles.length} match(es)`
+              : `${displayedFiles.length} item(s)`}
+          </span>
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-xl border border-[#1A263D] overflow-x-auto">
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <span className="text-xs font-mono">Querying Google Drive API...</span>
+            </div>
+          ) : displayedFiles.length === 0 ? (
+            <div className="py-10 text-center text-slate-500 text-xs">
+              {isSearchActive
+                ? `No files or folders matched "${searchTerm}".`
+                : "No files found in destination folder."}
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs min-w-[520px]">
+              <thead className="bg-[#070B14] text-slate-400 border-b border-[#1A263D] font-mono text-[10px] sm:text-[11px]">
+                <tr>
+                  <th className="py-2.5 px-3 font-medium">Name</th>
+                  <th className="py-2.5 px-3 font-medium">Size</th>
+                  <th className="py-2.5 px-3 font-medium">Last Modified</th>
+                  <th className="py-2.5 px-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#151D2E]">
+                {displayedFiles.map((file) => (
+                  <DriveRow
+                    key={file.id}
+                    item={file}
+                    depth={0}
+                    expandedFolders={expandedFolders}
+                    onToggleFolder={handleToggleFolder}
+                    onDownload={handleDownload}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Mobile Responsive Cards View */}
+        <div className="md:hidden space-y-2">
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <span className="text-xs font-mono">Querying Drive API...</span>
+            </div>
+          ) : displayedFiles.length === 0 ? (
+            <div className="py-10 text-center text-slate-500 text-xs rounded-xl bg-[#070B14] border border-[#1A263D]">
+              {isSearchActive
+                ? `No files or folders matched "${searchTerm}".`
+                : "No files found in destination folder."}
+            </div>
+          ) : (
+            displayedFiles.map((file) => (
+              <div
+                key={file.id}
+                className="p-3 rounded-xl bg-[#070B14] border border-[#1A263D] space-y-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {file.isFolder ? (
+                      <Folder className="w-4 h-4 text-blue-400 shrink-0" />
+                    ) : (
+                      getFileIcon(file.name, file.mimeType)
+                    )}
+                    <span
+                      onClick={() => file.isFolder && handleToggleFolder(file)}
+                      className={`text-xs font-medium text-slate-200 truncate ${
+                        file.isFolder ? "cursor-pointer hover:text-blue-300" : ""
+                      }`}
+                      title={file.name}
+                    >
+                      {file.name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!file.isFolder && (
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(file)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#18233C] transition-all"
+                        title="Download file"
+                      >
+                        <DownloadCloud className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {file.webViewLink && (
+                      <a
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-[#18233C] transition-all"
+                        title="Open in Drive"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-[#151D2E]/60">
+                  <span>Size: {file.sizeFormatted}</span>
+                  <span>Modified: {file.modifiedFormatted}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+================================================================
+// FILE: components/dashboard/ActiveTransfers.tsx
+================================================================
+
+"use client";
+
+import React, { useState } from "react";
+import {
+  FileText,
+  Pause,
+  X,
+  HardDrive,
+  DownloadCloud,
+  CheckCircle2,
+  Clock,
+  Zap,
+  Info,
+  AlertTriangle,
+} from "lucide-react";
+import { ActiveTaskItem } from "@/types/telemetry";
+import { cn } from "@/lib/utils";
+
+interface ActiveTransfersProps {
+  tasks: ActiveTaskItem[];
+  onPause: (taskId: string) => void;
+  onResume: (taskId: string) => void;
+  onCancel: (taskId: string) => void;
+}
+
+export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
+  tasks = [],
+  onCancel,
+}) => {
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+
+  const handleConfirmCancel = async (taskId: string) => {
+    setCancellingId(taskId);
+    setConfirmCancelId(null);
+    try {
+      await onCancel(taskId);
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  return (
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 select-none">
+        <div className="flex items-center gap-2 min-w-0">
+          <h2 className="text-sm font-semibold text-white tracking-wide whitespace-nowrap">
+            Active Transfers
+          </h2>
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 shrink-0">
+            {tasks.length}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 text-xs font-mono">
+          {tasks.length > 0 ? (
+            <span className="flex items-center gap-1.5 text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="hidden sm:inline">Real-time cloud pipeline</span>
+              <span className="sm:hidden font-medium">Live Stream</span>
+            </span>
+          ) : (
+            <span className="text-slate-500 font-mono text-[11px]">Worker Idle</span>
+          )}
+        </div>
+      </div>
+
+      {tasks.length === 0 ? (
+        /* Empty State */
+        <div className="py-10 px-4 rounded-xl border border-dashed border-[#1A263D] bg-[#070B14]/40 flex flex-col items-center justify-center text-center">
+          <HardDrive className="w-8 h-8 text-slate-600 mb-2.5 animate-pulse" />
+          <p className="text-xs font-medium text-slate-300">
+            No active stream jobs running
+          </p>
+          <p className="text-[11px] text-slate-500 max-w-sm mt-1 leading-relaxed">
+            Submit a Hugging Face repo or torrent magnet link above to stream files directly into Google Drive.
+          </p>
+        </div>
+      ) : (
+        /* Active Task List */
+        <div className="space-y-3">
+          {tasks.map((task) => {
+            const rawProgress = Number(task.progress || 0);
+            const safeProgress = isNaN(rawProgress)
+              ? 0
+              : Math.min(Math.max(rawProgress, 0), 100);
+            const isTransferring = task.status === "transferring";
+            const isComplete = safeProgress >= 100;
+            const isCancelling = cancellingId === task.id;
+            const isConfirming = confirmCancelId === task.id;
+
+            return (
+              <div
+                key={task.id}
+                className="p-3.5 sm:p-4 rounded-xl bg-[#070B14] border border-[#1A263D] hover:border-slate-700/80 transition-all space-y-3"
+              >
+                {/* File Row */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                    {isTransferring ? (
+                      <DownloadCloud className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-blue-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="text-xs font-medium text-slate-200 truncate font-mono"
+                      title={task.name}
+                    >
+                      {task.name}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {task.source || "Cloud Stream"}
+                      </span>
+                      <span className="text-[10px] text-slate-600">•</span>
+                      <span className="text-[10px] text-emerald-400/80 font-mono">
+                        Direct Stream to Google Drive
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status, Speed & Action Controls Row */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-2.5 border-t border-[#151D2E]/80">
+                  {/* Status Badge */}
+                  <div className="shrink-0">
+                    <span
+                      className={cn(
+                        "text-[10px] font-medium font-mono px-2.5 py-0.5 rounded-full flex items-center gap-1.5",
+                        isComplete
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          : isTransferring
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                          : "bg-purple-500/10 text-purple-300 border border-purple-500/30"
+                      )}
+                    >
+                      {isComplete ? (
+                        <>
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span>Committed to Drive</span>
+                        </>
+                      ) : isTransferring ? (
+                        <>
+                          <Zap className="w-3 h-3 text-emerald-400 animate-pulse shrink-0" />
+                          <span>Drive Sync</span>
+                        </>
+                      ) : (
+                        <>
+                          <DownloadCloud className="w-3 h-3 text-purple-400 animate-pulse shrink-0" />
+                          <span>Streaming</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Speed, ETA & Controls */}
+                  <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 ml-auto">
+                    {/* Speed indicator */}
+                    <div className="text-right font-mono leading-tight">
+                      <div className="text-xs font-semibold text-slate-200">
+                        {task.speed || "0.00 MB/s"}
+                      </div>
+                      <div className="text-[10px] text-slate-500 flex items-center justify-end gap-1 mt-0.5">
+                        <Clock className="w-2.5 h-2.5 shrink-0" />
+                        <span>ETA {task.eta || "-"}</span>
+                      </div>
+                    </div>
+
+                    {/* Action Controls */}
+                    <div className="flex items-center gap-1.5 pl-2.5 border-l border-[#1A263D]">
+                      {/* Disabled Pause Button with explicit disclaimer per roadmap */}
+                      <button
+                        type="button"
+                        disabled
+                        title="Pause/resume is unsupported by the current worker engine"
+                        className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] flex items-center justify-center text-slate-600 cursor-not-allowed opacity-50"
+                        aria-label="Pause (unsupported)"
+                      >
+                        <Pause className="w-3 h-3 fill-current" />
+                      </button>
+
+                      {/* Cancel Button with Confirmation Prompt */}
+                      {isConfirming ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmCancel(task.id)}
+                            className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-semibold hover:bg-rose-500 transition-colors"
+                          >
+                            Confirm Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmCancelId(null)}
+                            className="px-1.5 py-1 rounded bg-[#1A263D] text-slate-300 text-[10px] hover:text-white"
+                          >
+                            Back
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmCancelId(task.id)}
+                          disabled={isCancelling}
+                          title="Cancel task"
+                          className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] hover:border-rose-500/50 hover:bg-rose-500/15 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                          aria-label="Cancel task"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar row */}
+                <div className="space-y-1 pt-0.5">
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-slate-400">Stream Progress</span>
+                    <span className="text-blue-400 font-semibold">
+                      {safeProgress.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-[#0D1424] rounded-full overflow-hidden border border-[#1A263D]">
+                    <div
+                      className={cn(
+                        "h-full transition-all duration-300 rounded-full",
+                        isTransferring
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                          : "bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400"
+                      )}
+                      style={{ width: `${safeProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+================================================================
+// FILE: components/dashboard/AnalyticsGrid.tsx
+================================================================
+
+"use client";
+
+import React, { useMemo } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { SpeedDataPoint } from "@/types/telemetry";
+import { formatBytes } from "@/lib/utils";
+
+interface AnalyticsGridProps {
+  speedHistory?: SpeedDataPoint[];
+  currentSpeed?: string;
+  bytes24h?: number;
+  hourlyData?: Record<string, number>;
+}
+
+export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
+  speedHistory = [],
+  currentSpeed = "0.00 MB/s",
+  bytes24h = 0,
+  hourlyData,
+}) => {
+  const chartPoints = useMemo(() => {
+    const width = 300;
+    const height = 90;
+    const padding = 5;
+
+    if (!speedHistory || speedHistory.length === 0) {
+      return {
+        path: `M 0 ${height - padding} L ${width} ${height - padding}`,
+        area: `M 0 ${height - padding} L ${width} ${height - padding} L ${width} ${height} L 0 ${height} Z`,
+      };
+    }
+
+    const maxSpeed = Math.max(
+      ...speedHistory.map((d) => Number(d.speed) || 0),
+      50
+    );
+
+    const safePoints =
+      speedHistory.length === 1
+        ? [speedHistory[0], speedHistory[0]]
+        : speedHistory;
+
+    const stepX = width / Math.max(safePoints.length - 1, 1);
+
+    const coords = safePoints.map((d, index) => {
+      const speedVal = Number(d.speed) || 0;
+      const x = index * stepX;
+      const normalizedY = (speedVal / maxSpeed) * (height - padding * 2);
+      const y = height - padding - normalizedY;
+      return { x, y };
+    });
+
+    let d = `M ${coords[0].x} ${coords[0].y}`;
+    for (let i = 1; i < coords.length; i++) {
+      const prev = coords[i - 1];
+      const curr = coords[i];
+      const midX = (prev.x + curr.x) / 2;
+      d += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
+    }
+
+    const areaD = `${d} L ${width} ${height} L 0 ${height} Z`;
+
+    return { path: d, area: areaD };
+  }, [speedHistory]);
+
+  const hourlyBars = useMemo(() => {
+    const slots = ["00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22"];
+    return slots.map((hour) => {
+      const nextHour = String(Number(hour) + 1).padStart(2, "0");
+      const bytes1 = hourlyData?.[hour] || 0;
+      const bytes2 = hourlyData?.[nextHour] || 0;
+      const slotBytes = bytes1 + bytes2;
+      const slotGb = slotBytes / (1024 * 1024 * 1024);
+      return {
+        hour: `${hour}:00`,
+        dl: Number(slotGb.toFixed(2)),
+        ul: Number((slotGb * 0.1).toFixed(2)),
+      };
+    });
+  }, [hourlyData]);
+
+  const maxBar = useMemo(() => {
+    return Math.max(...hourlyBars.map((b) => b.dl), 0.5);
+  }, [hourlyBars]);
+
+  const display24hString = bytes24h > 0 ? formatBytes(bytes24h) : "0 B";
+
+  return (
+    <>
+      {/* Card 1: Live Transfer Speed Wave Curve */}
+      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span className="font-medium">Transfer Speed</span>
+            <ArrowUpRight className="w-4 h-4 text-slate-500" />
+          </div>
+
+          <div className="mt-2">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight">
+              {currentSpeed.includes("MB/s") ? currentSpeed : `${currentSpeed} MB/s`}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
+              Current throughput
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full h-20 sm:h-24 mt-3 sm:mt-4 relative overflow-hidden">
+          <svg
+            viewBox="0 0 300 90"
+            preserveAspectRatio="none"
+            className="w-full h-full overflow-visible"
+          >
+            <defs>
+              <linearGradient id="speedGlow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+
+            {chartPoints.area && (
+              <path d={chartPoints.area} fill="url(#speedGlow)" />
+            )}
+
+            {chartPoints.path && (
+              <path
+                d={chartPoints.path}
+                fill="none"
+                stroke="#38BDF8"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+          </svg>
+
+          <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-[9px] font-mono text-slate-500 pointer-events-none pr-1">
+            <span>peak</span>
+            <span>avg</span>
+            <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Card 2: 24h Data Transfer Historical Graph */}
+      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span className="font-medium">Data Transfer (24h)</span>
+            <div className="flex items-center gap-2 text-[10px] font-mono">
+              <span className="flex items-center gap-1 text-sky-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                DL
+              </span>
+              <span className="flex items-center gap-1 text-blue-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                UL
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight">
+              {display24hString}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
+              Aggregated cloud bandwidth
+            </div>
+          </div>
+        </div>
+
+        {/* Scaled Bar Chart for 24h rolling activity */}
+        <div className="mt-4">
+          <div className="flex items-end justify-between h-20 sm:h-24 gap-1 px-1">
+            {hourlyBars.map((bar, index) => {
+              const heightPercent = bar.dl > 0
+                ? Math.max(Math.min((bar.dl / maxBar) * 100, 100), 8)
+                : 4;
+              const ulHeightPercent = bar.ul > 0
+                ? Math.max(Math.min((bar.ul / maxBar) * 100, 50), 4)
+                : 2;
+
+              return (
+                <div
+                  key={index}
+                  className="flex-1 flex items-end justify-center gap-0.5 h-full group relative"
+                  title={`${bar.hour}: ${bar.dl} GB`}
+                >
+                  <div
+                    style={{ height: `${heightPercent}%` }}
+                    className="w-full max-w-[6px] rounded-t-sm bg-sky-400/80 group-hover:bg-sky-300 transition-all"
+                  />
+                  <div
+                    style={{ height: `${ulHeightPercent}%` }}
+                    className="w-full max-w-[4px] rounded-t-sm bg-blue-600/60 group-hover:bg-blue-500 transition-all"
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-between text-[9px] font-mono text-slate-500 mt-2 px-1 border-t border-[#151D2E]/80 pt-1.5">
+            <span>00:00</span>
+            <span>06:00</span>
+            <span>12:00</span>
+            <span>18:00</span>
+            <span>22:00</span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+
+================================================================
+// FILE: components/dashboard/ExtractionCard.tsx
+================================================================
+
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  ArrowRight,
+  Link2,
+  Sparkles,
+  Database,
+  Globe,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { validateExtractionInput } from "@/lib/validation";
+
+export type SourceBadge = "auto" | "hf" | "academic";
+export type ExecutionMode = "cloud" | "local";
+
+interface ExtractionCardProps {
+  onExtract: (payload: {
+    url: string;
+    source: SourceBadge;
+    mode: ExecutionMode;
+  }) => Promise<void> | void;
+  isSubmitting?: boolean;
+}
+
+export const ExtractionCard: React.FC<ExtractionCardProps> = ({
+  onExtract,
+  isSubmitting = false,
+}) => {
+  const [url, setUrl] = useState("");
+  const [source, setSource] = useState<SourceBadge>("auto");
+  const [mode, setMode] = useState<ExecutionMode>("cloud");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Listen for QuickActions clipboard/preset injection
+  useEffect(() => {
+    const handleSetUrl = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        const val = customEvent.detail.trim();
+        setUrl(val);
+        setValidationError(null);
+
+        if (val.includes("huggingface.co") || val.includes("hf.co")) {
+          setSource("hf");
+        } else if (
+          val.startsWith("magnet:?") ||
+          val.includes("academictorrents") ||
+          val.endsWith(".torrent")
+        ) {
+          setSource("academic");
+        }
+      }
+    };
+
+    window.addEventListener("runsync:set_url", handleSetUrl);
+    return () => window.removeEventListener("runsync:set_url", handleSetUrl);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrl(e.target.value);
+    if (validationError) {
+      setValidationError(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url.trim() || isSubmitting) return;
+
+    // Validate using strict schema
+    const validation = validateExtractionInput(url, source);
+    if (!validation.valid) {
+      setValidationError(validation.error || "Invalid extraction input.");
+      return;
+    }
+
+    setValidationError(null);
+
+    await onExtract({
+      url: validation.normalizedInput || url.trim(),
+      source,
+      mode,
+    });
+
+    setUrl("");
+  };
+
+  return (
+    <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-3.5 sm:space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-slate-400">New Extraction</span>
+        {isSubmitting && (
+          <div className="flex items-center gap-1.5 text-blue-400 text-[11px] sm:text-xs font-mono">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span className="truncate">Dispatching to cloud...</span>
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Main URL Input Bar */}
+        <div className="relative flex items-center">
+          <Link2 className="w-4 h-4 text-slate-500 absolute left-3 shrink-0" />
+          <input
+            type="text"
+            value={url}
+            onChange={handleInputChange}
+            disabled={isSubmitting}
+            placeholder="Paste infohash, magnet, or Hugging Face repository link..."
+            className="w-full bg-[#070B14] border border-[#1A263D] focus:border-blue-500 rounded-xl pl-9 pr-24 sm:pr-28 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-60"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            variant="primary"
+            disabled={!url.trim() || isSubmitting}
+            className="absolute right-1.5 h-7 sm:h-8 px-2.5 sm:px-3.5 text-xs flex items-center gap-1 disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span className="hidden sm:inline">Sending</span>
+              </>
+            ) : (
+              <>
+                <span>Extract</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Validation Error Message */}
+        {validationError && (
+          <div className="flex items-center gap-1.5 text-rose-400 text-xs px-1">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>{validationError}</span>
+          </div>
+        )}
+
+        {/* Source Badges & Execution Mode Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
+          {/* Scrollable Badges */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none no-scrollbar">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                setSource("auto");
+                setValidationError(null);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+                source === "auto"
+                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/40"
+                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Auto (Detection)</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                setSource("hf");
+                setValidationError(null);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+                source === "hf"
+                  ? "bg-amber-600/20 text-amber-400 border border-amber-500/40"
+                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+              }`}
+            >
+              <span>🤗 Hugging Face</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                setSource("academic");
+                setValidationError(null);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+                source === "academic"
+                  ? "bg-rose-600/20 text-rose-400 border border-rose-500/40"
+                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+              }`}
+            >
+              <span>🧲 Academic Torrents</span>
+            </button>
+          </div>
+
+          {/* Mode Switcher */}
+          <div className="flex items-center self-start sm:self-auto bg-[#070B14] p-0.5 rounded-lg border border-[#1A263D] shrink-0">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => setMode("cloud")}
+              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-medium flex items-center gap-1.5 transition-all ${
+                mode === "cloud"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Database className="w-3 h-3" />
+              <span>Cloud Extract</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => setMode("local")}
+              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-medium flex items-center gap-1.5 transition-all ${
+                mode === "local"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Globe className="w-3 h-3" />
+              <span>Local Fetch</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+
+================================================================
+// FILE: components/dashboard/MetricsRow.tsx
+================================================================
+
+"use client";
+
+import React from "react";
+import { Send, CheckCircle2, Download, Zap } from "lucide-react";
+import { Sparkline } from "@/components/ui/sparkline";
+import { KpiMetrics } from "@/types/telemetry";
+import { cn, formatBytes } from "@/lib/utils";
+
+interface MetricsRowProps {
+  metrics?: Partial<KpiMetrics>;
+  liveExtractedBytes?: number;
+  liveBytesToday?: number;
+}
+
+const defaultFlatSparkline = [0, 0, 0, 0, 0, 0, 0];
+
+export const MetricsRow: React.FC<MetricsRowProps> = ({
+  metrics,
+  liveExtractedBytes,
+  liveBytesToday,
+}) => {
+  const calculatedDataExtracted =
+    typeof liveExtractedBytes === "number" && liveExtractedBytes > 0
+      ? formatBytes(liveExtractedBytes)
+      : String(metrics?.dataExtracted?.value ?? "0 B");
+
+  const dynamicTodayTrend =
+    typeof liveBytesToday === "number" && liveBytesToday > 0
+      ? `+${formatBytes(liveBytesToday)} today`
+      : "+0 B today";
+
+  let displaySpeed = String(metrics?.avgSpeed?.value ?? "0.00 MB/s");
+  if (
+    displaySpeed.toLowerCase().includes("finish") ||
+    displaySpeed.toLowerCase().includes("idle") ||
+    displaySpeed.toLowerCase().includes("offline")
+  ) {
+    displaySpeed = "0.00 MB/s";
+  }
+
+  const defaultMetrics: KpiMetrics = {
+    activeTransfers: {
+      value: metrics?.activeTransfers?.value ?? 0,
+      trend: metrics?.activeTransfers?.trend ?? "idle",
+      isPositive: Number(metrics?.activeTransfers?.value ?? 0) > 0,
+    },
+    completed: {
+      value: metrics?.completed?.value ?? 0,
+      trend: metrics?.completed?.trend ?? "0 this week",
+      isPositive: Number(metrics?.completed?.value ?? 0) > 0,
+    },
+    dataExtracted: {
+      value: calculatedDataExtracted,
+      trend: dynamicTodayTrend,
+      isPositive: (liveBytesToday ?? 0) > 0,
+    },
+    avgSpeed: {
+      value: displaySpeed,
+      trend: metrics?.avgSpeed?.trend ?? "0.00 MB/s",
+      isPositive: Number(displaySpeed.replace(/[^0-9.]/g, "")) > 0,
+    },
+  };
+
+  const cards = [
+    {
+      id: "active",
+      title: "Active Transfers",
+      value: defaultMetrics.activeTransfers.value,
+      trend: defaultMetrics.activeTransfers.trend,
+      isPositive: defaultMetrics.activeTransfers.isPositive,
+      icon: Send,
+      iconColor: "text-blue-400",
+      iconBg: "bg-blue-500/10 border-blue-500/25",
+      sparklineType: "line" as const,
+      sparklineColor: "blue" as const,
+      sparklineData: Number(defaultMetrics.activeTransfers.value) > 0 ? [0, 1, 1, 1, 2, 1, 1] : defaultFlatSparkline,
+    },
+    {
+      id: "completed",
+      title: "Completed",
+      value: defaultMetrics.completed.value,
+      trend: defaultMetrics.completed.trend,
+      isPositive: defaultMetrics.completed.isPositive,
+      icon: CheckCircle2,
+      iconColor: "text-emerald-400",
+      iconBg: "bg-emerald-500/10 border-emerald-500/25",
+      sparklineType: "bars" as const,
+      sparklineColor: "emerald" as const,
+      sparklineData: Number(defaultMetrics.completed.value) > 0 ? [1, 2, 3, 4, 5, 5, 6] : defaultFlatSparkline,
+    },
+    {
+      id: "extracted",
+      title: "Data Extracted",
+      value: defaultMetrics.dataExtracted.value,
+      trend: defaultMetrics.dataExtracted.trend,
+      isPositive: defaultMetrics.dataExtracted.isPositive,
+      icon: Download,
+      iconColor: "text-purple-400",
+      iconBg: "bg-purple-500/10 border-purple-500/25",
+      sparklineType: "line" as const,
+      sparklineColor: "purple" as const,
+      sparklineData: (liveExtractedBytes ?? 0) > 0 ? [10, 20, 35, 50, 70, 85, 100] : defaultFlatSparkline,
+    },
+    {
+      id: "speed",
+      title: "Avg Speed",
+      value: defaultMetrics.avgSpeed.value,
+      trend: defaultMetrics.avgSpeed.trend,
+      isPositive: defaultMetrics.avgSpeed.isPositive,
+      icon: Zap,
+      iconColor: "text-amber-400",
+      iconBg: "bg-amber-500/10 border-amber-500/25",
+      sparklineType: "line" as const,
+      sparklineColor: "amber" as const,
+      sparklineData: defaultMetrics.avgSpeed.isPositive ? [5, 15, 25, 40, 50, 35, 45] : defaultFlatSparkline,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 select-none">
+      {cards.map((card) => {
+        const Icon = card.icon;
+
+        return (
+          <div
+            key={card.id}
+            className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl hover:border-slate-700/70 transition-all flex flex-col justify-between"
+          >
+            {/* Top row: Title + Icon */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] sm:text-xs font-medium text-slate-400 truncate">
+                {card.title}
+              </span>
+              <div
+                className={cn(
+                  "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border shrink-0",
+                  card.iconBg
+                )}
+              >
+                <Icon className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4", card.iconColor)} />
+              </div>
+            </div>
+
+            {/* Middle row: Big Metric Value */}
+            <div className="mt-2.5 sm:mt-3">
+              <div className="text-lg sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight truncate">
+                {card.value}
+              </div>
+            </div>
+
+            {/* Bottom row: Trend subtitle + Sparkline */}
+            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-[#151D2E]/80">
+              <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono truncate">
+                <span
+                  className={cn(
+                    "font-medium",
+                    card.isPositive ? "text-emerald-400" : "text-slate-500"
+                  )}
+                >
+                  {card.trend}
+                </span>
+              </div>
+
+              <div className="w-14 sm:w-16 h-5 shrink-0 opacity-80">
+                <Sparkline
+                  data={card.sparklineData}
+                  type={card.sparklineType}
+                  color={card.sparklineColor}
+                  className="w-full h-full"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+
+================================================================
+// FILE: components/dashboard/QuickActions.tsx
+================================================================
+
+"use client";
+
+import React from "react";
+import { useRouter } from "next/navigation";
+import {
+  Clipboard,
+  FileText,
+  Boxes,
+  Layers,
+  BarChart2,
+  HardDrive,
+  ArrowRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface ActionItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  iconColor?: string;
+  onClick?: () => void;
+}
+
+export const QuickActions: React.FC = () => {
+  const router = useRouter();
+
+  const actions: ActionItem[] = [
+    {
+      id: "paste",
+      label: "Paste from Clipboard",
+      icon: Clipboard,
+      iconColor: "text-blue-400",
+      onClick: async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            window.dispatchEvent(
+              new CustomEvent("runsync:set_url", { detail: text.trim() })
+            );
+          }
+        } catch (err) {
+          console.error("Clipboard access denied:", err);
+        }
+      },
+    },
+    {
+      id: "torrent",
+      label: "Open .torrent File",
+      icon: FileText,
+      iconColor: "text-slate-300",
+      onClick: () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".torrent";
+        input.onchange = (e: Event) => {
+          const target = e.target as HTMLInputElement;
+          const file = target.files?.[0];
+          if (file) {
+            window.dispatchEvent(
+              new CustomEvent("runsync:set_url", { detail: file.name })
+            );
+          }
+        };
+        input.click();
+      },
+    },
+    {
+      id: "hf",
+      label: "HF Dataset",
+      icon: Boxes,
+      iconColor: "text-amber-400",
+      onClick: () => {
+        window.dispatchEvent(
+          new CustomEvent("runsync:set_url", {
+            detail: "https://huggingface.co/datasets/common-crawl/raw-data",
+          })
+        );
+      },
+    },
+    {
+      id: "batch",
+      label: "Batch Links",
+      icon: Layers,
+      iconColor: "text-purple-400",
+      onClick: () => {
+        window.dispatchEvent(
+          new CustomEvent("runsync:set_url", {
+            detail: "https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct",
+          })
+        );
+      },
+    },
+    {
+      id: "status",
+      label: "Check Status",
+      icon: BarChart2,
+      iconColor: "text-emerald-400",
+      onClick: () => {
+        window.dispatchEvent(new CustomEvent("runsync:refresh_telemetry"));
+      },
+    },
+    {
+      id: "storage",
+      label: "Manage Storage",
+      icon: HardDrive,
+      iconColor: "text-sky-400",
+      onClick: () => {
+        router.push("/storage");
+      },
+    },
+  ];
+
+  return (
+    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm md:text-base font-semibold text-slate-100 tracking-tight">
+          Quick Actions
+        </h2>
+        <span className="text-xs text-slate-500 font-mono">RunSync Tools</span>
+      </div>
+
+      {/* 2x3 Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 md:gap-3">
+        {actions.map((act) => {
+          const Icon = act.icon;
+          return (
+            <button
+              key={act.id}
+              onClick={act.onClick}
+              className={cn(
+                "flex items-center gap-2.5 p-3 rounded-xl bg-[#070B14] hover:bg-[#121B30]",
+                "border border-[#1A263D] hover:border-blue-500/40 text-slate-300 hover:text-white",
+                "transition-all text-xs font-medium cursor-pointer shadow-sm active:scale-[0.98] text-left"
+              )}
+            >
+              <Icon className={cn("w-4 h-4 shrink-0", act.iconColor)} />
+              <span className="truncate">{act.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+================================================================
+// FILE: components/dashboard/RecentActivity.tsx
+================================================================
+
+"use client";
+
+import React from "react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  MoreVertical,
+  UploadCloud,
+  AlertCircle,
+  Database,
+  Download,
+  CheckCircle2,
+} from "lucide-react";
+import { RecentActivityItem, ActivityStatus } from "@/types/telemetry";
+import { cn } from "@/lib/utils";
+
+interface RecentActivityProps {
+  activities?: RecentActivityItem[];
+}
+
+const defaultActivities: RecentActivityItem[] = [
+  {
+    id: "act-1",
+    title: "meta-llama/Llama-3.2-1B-Instruct",
+    subtitle: "Cloud stream to Drive",
+    timestamp: "Just now",
+    status: "completed",
+  },
+  {
+    id: "act-2",
+    title: "Academic Torrent Swarm",
+    subtitle: "Direct disk ingest",
+    timestamp: "18m ago",
+    status: "downloaded",
+  },
+  {
+    id: "act-3",
+    title: "common_crawl/raw-data",
+    subtitle: "Direct Google Drive stream",
+    timestamp: "1h ago",
+    status: "transferred",
+  },
+];
+
+export const RecentActivity: React.FC<RecentActivityProps> = ({
+  activities = defaultActivities,
+}) => {
+  const router = useRouter();
+
+  const getStatusIconConfig = (status: ActivityStatus) => {
+    switch (status) {
+      case "preparing":
+        return {
+          icon: UploadCloud,
+          wrapperClass: "bg-blue-500/10 border-blue-500/30 text-blue-400",
+        };
+      case "failed":
+        return {
+          icon: AlertCircle,
+          wrapperClass: "bg-rose-500/10 border-rose-500/30 text-rose-400",
+        };
+      case "transferred":
+        return {
+          icon: Database,
+          wrapperClass: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+        };
+      case "downloaded":
+        return {
+          icon: Download,
+          wrapperClass: "bg-sky-500/10 border-sky-500/30 text-sky-400",
+        };
+      case "completed":
+        return {
+          icon: CheckCircle2,
+          wrapperClass: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+        };
+      default:
+        return {
+          icon: CheckCircle2,
+          wrapperClass: "bg-slate-500/10 border-slate-500/30 text-slate-400",
+        };
+    }
+  };
+
+  return (
+    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm md:text-base font-semibold text-slate-100 tracking-tight">
+          Recent Activity
+        </h2>
+        <button
+          type="button"
+          onClick={() => router.push("/storage")}
+          className="text-xs text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1"
+        >
+          <span>View Storage</span>
+          <ArrowRight className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* Activity Timeline List */}
+      <div className="space-y-3.5">
+        {activities.map((item) => {
+          const config = getStatusIconConfig(item.status);
+          const Icon = config.icon;
+
+          return (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-3 group"
+            >
+              {/* Left: Indicator Icon, Title & Status Detail */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center border shrink-0",
+                    config.wrapperClass
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div
+                    className="text-xs font-semibold text-slate-200 truncate group-hover:text-white transition-colors"
+                    title={item.title}
+                  >
+                    {item.title}
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">
+                    {item.subtitle}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Timestamp */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-mono text-slate-500">
+                  {item.timestamp}
+                </span>
+                <button
+                  type="button"
+                  className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-[#151E33] transition-colors"
+                  aria-label="Item actions"
+                >
+                  <MoreVertical className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+================================================================
+// FILE: components/dashboard/ServerWakeModal.tsx
+================================================================
+
+"use client";
+
+import React from "react";
+import { Server, Power, Loader2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface ServerWakeModalProps {
+  isOpen: boolean;
+  isBooting: boolean;
+  onClose: () => void;
+  onConfirmWake: () => Promise<void>;
+}
+
+export const ServerWakeModal: React.FC<ServerWakeModalProps> = ({
+  isOpen,
+  isBooting,
+  onClose,
+  onConfirmWake,
+}) => {
+  // Guard ensures zero modal artifacts render when closed
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-150">
+      <div className="w-full max-w-md p-6 rounded-2xl bg-[#0D1424] border border-[#1E2C48] shadow-2xl relative space-y-4">
+        <button
+          onClick={onClose}
+          disabled={isBooting}
+          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+          aria-label="Close modal"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center">
+            <Server className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">Cloud Worker in Standby</h3>
+            <p className="text-xs text-slate-400">Codespace instance is currently powered off.</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-300 leading-relaxed bg-[#070B14] p-3 rounded-xl border border-[#1A263D]">
+          To stream files directly to Google Drive, the Codespace worker needs to be activated. Once on, you can freely enqueue multiple tasks. It will <strong>automatically power off after 5 minutes of idle time</strong>.
+        </p>
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isBooting}>
+            Cancel
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onConfirmWake}
+            disabled={isBooting}
+            className="flex items-center gap-2"
+          >
+            {isBooting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Booting Instance (~30s)...</span>
+              </>
+            ) : (
+              <>
+                <Power className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Turn On Server</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+================================================================
+// FILE: components/dashboard/StorageCard.tsx
+================================================================
+
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { formatBytes } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
+
+const DEFAULT_CAPACITY_BYTES = 5 * 1024 * 1024 * 1024 * 1024; // 5 TB
+
+interface StorageCardProps {
+  storage?: {
+    usedBytes?: number;
+    totalBytes?: number;
+  };
+}
+
+export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
+  const usedBytes = storage?.usedBytes || 0;
+  const totalLimit = storage?.totalBytes || DEFAULT_CAPACITY_BYTES;
+
+  const usedPercentage = Math.min(
+    parseFloat(((usedBytes / totalLimit) * 100).toFixed(1)),
+    100
+  );
+  const remainingBytes = Math.max(totalLimit - usedBytes, 0);
+
+  return (
+    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-4 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-slate-400">Storage Usage</span>
+          <Link
+            href="/storage"
+            className="text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            <ArrowUpRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <div className="flex items-baseline justify-between mt-2">
+          <div className="text-2xl md:text-3xl font-extrabold text-white font-sans">
+            {formatBytes(usedBytes)}{" "}
+            <span className="text-sm font-normal text-slate-400">/ 5 TB</span>
+          </div>
+          <span className="text-xs font-mono font-semibold text-blue-400">
+            {usedPercentage}%
+          </span>
+        </div>
+
+        <div className="mt-3">
+          <Progress
+            value={usedPercentage}
+            height="h-2"
+            indicatorColor="bg-gradient-to-r from-sky-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2 pt-3 border-t border-[#151D2E] text-xs">
+        <div className="flex items-center justify-between">
+          <span className="text-slate-400 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            Extracted Files
+          </span>
+          <span className="font-mono text-slate-200">{formatBytes(usedBytes)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-400 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-slate-600" />
+            Remaining Quota
+          </span>
+          <span className="font-mono text-emerald-400">
+            {formatBytes(remainingBytes)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+================================================================
+// FILE: components/dashboard/WelcomeBanner.tsx
+================================================================
+
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Calendar, Loader2, Power } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface WelcomeBannerProps {
+  userName?: string;
+  isOnline: boolean;
+  isBooting?: boolean;
+  cluster?: string;
+  onWake?: () => void;
+}
+
+export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
+  userName = "Saiteja",
+  isOnline,
+  isBooting = false,
+  cluster = "Codespace • US-West",
+  onWake,
+}) => {
+  const [currentDate, setCurrentDate] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState<string>("");
+  const [greeting, setGreeting] = useState<string>("Good afternoon");
+
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      const hours = now.getHours();
+
+      if (hours < 12) setGreeting("Good morning");
+      else if (hours < 17) setGreeting("Good afternoon");
+      else setGreeting("Good evening");
+
+      const dateFormatted = now.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+
+      const timeFormatted = now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+      setCurrentDate(dateFormatted);
+      setCurrentTime(timeFormatted);
+    };
+
+    updateDateTime();
+    const timer = setInterval(updateDateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 select-none pt-1">
+      {/* Left: User Welcome Greeting */}
+      <div className="space-y-1">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+          {greeting}, {userName} <span className="inline-block animate-wave">👋</span>
+        </h1>
+        <p className="text-[11px] sm:text-xs md:text-sm text-slate-400">
+          Extract, manage, and transfer your files seamlessly.
+        </p>
+      </div>
+
+      {/* Right: Real-time Status Pill & Live Clock - Identically dimensioned and aligned */}
+      <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:w-auto sm:items-center sm:gap-3 shrink-0">
+        {/* Status Pill Card */}
+        <div
+          onClick={!isOnline && !isBooting && onWake ? onWake : undefined}
+          title={!isOnline && !isBooting ? "Click to boot cloud worker instance" : undefined}
+          className={cn(
+            "h-[52px] px-3 py-2 rounded-xl bg-[#0D1424] border border-[#1A263D] flex items-center gap-2.5 transition-all min-w-0 select-none",
+            !isOnline && !isBooting && onWake && "cursor-pointer hover:border-blue-500/50 hover:bg-[#111A30]"
+          )}
+        >
+          <div className="w-8 h-8 rounded-lg bg-[#141E33] border border-[#1E2C48] flex items-center justify-center shrink-0">
+            {isBooting ? (
+              <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+            ) : (
+              <span
+                className={cn(
+                  "w-2.5 h-2.5 rounded-full transition-colors",
+                  isOnline
+                    ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                    : "bg-slate-500"
+                )}
+              />
+            )}
+          </div>
+
+          <div className="flex flex-col justify-center min-w-0">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-200 flex items-center gap-1.5 leading-tight truncate">
+              <span className="truncate">
+                {isBooting
+                  ? "Booting..."
+                  : isOnline
+                  ? "System Online"
+                  : "System Standby"}
+              </span>
+              {!isOnline && !isBooting && onWake && (
+                <Power className="w-3 h-3 text-slate-400 hover:text-blue-400 shrink-0" />
+              )}
+            </div>
+            <div className="text-[9px] sm:text-[10px] font-mono text-slate-400 truncate mt-0.5 leading-tight">
+              {isBooting ? "Spawning..." : cluster}
+            </div>
+          </div>
+        </div>
+
+        {/* Date / Time Card */}
+        <div className="h-[52px] px-3 py-2 rounded-xl bg-[#0D1424] border border-[#1A263D] flex items-center gap-2.5 min-w-0 select-none">
+          <div className="w-8 h-8 rounded-lg bg-[#141E33] border border-[#1E2C48] flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="flex flex-col justify-center min-w-0">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-200 truncate leading-tight">
+              {currentDate || "Loading..."}
+            </div>
+            <div className="text-[9px] sm:text-[10px] font-mono text-slate-400 truncate mt-0.5 leading-tight">
+              {currentTime || "--:--"}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+================================================================
+// FILE: components/layout/AuthGate.tsx
+================================================================
+
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  User,
+} from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebase";
+import { ShieldAlert, LogIn, Loader2, Zap, AlertCircle } from "lucide-react";
+
+export function AuthGate({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [accessDenied, setAccessDenied] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const allowedEmails = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && currentUser.email) {
+        const email = currentUser.email.toLowerCase();
+        if (allowedEmails.length === 0 || allowedEmails.includes(email)) {
+          setUser(currentUser);
+          setAccessDenied(null);
+          setAuthError(null);
+        } else {
+          signOut(auth);
+          setUser(null);
+          setAccessDenied(currentUser.email);
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setAccessDenied(null);
+    setAuthError(null);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setLoading(false);
+      setAuthError(err.message || "Google authentication was cancelled or interrupted.");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-[#080C14] flex flex-col items-center justify-center text-slate-400 gap-3">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <span className="text-xs font-mono">Verifying authorization...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="h-screen w-screen bg-[#080C14] flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-sm p-6 sm:p-8 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-2xl flex flex-col items-center text-center space-y-5">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+            <Zap className="w-6 h-6 fill-current" />
+          </div>
+
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight">RunSync 2.0</h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Private Cloud Extraction & Swarm Pipeline
+            </p>
+          </div>
+
+          {accessDenied && (
+            <div className="w-full p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 text-left">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>
+                Access Denied for <strong>{accessDenied}</strong>. Email is not authorized.
+              </span>
+            </div>
+          )}
+
+          {authError && (
+            <div className="w-full p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5 text-left">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          <button
+            onClick={handleGoogleLogin}
+            className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+
+================================================================
+// FILE: components/layout/Header.tsx
+================================================================
+
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { Zap } from "lucide-react";
+
+export const Header: React.FC = () => {
+  return (
+    <header className="h-14 border-b border-[#151D2E]/80 bg-[#080C14]/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 select-none">
+      {/* Brand icon / subtle breadcrumb */}
+      <Link href="/" className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white transition-colors">
+        <Zap className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />
+        <span className="font-mono text-slate-400">RunSync</span>
+        <span className="text-slate-600">/</span>
+        <span className="text-slate-200">Cloud Pipeline</span>
+      </Link>
+
+      {/* User profile avatar on the right */}
+      <div className="flex items-center gap-3">
+        <div
+          title="Saiteja — RunSync Admin"
+          className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center text-white text-[11px] font-bold font-mono shadow-md shadow-purple-600/30 cursor-pointer hover:ring-2 hover:ring-purple-500/50 transition-all"
+        >
+          S
+        </div>
+      </div>
+    </header>
+  );
+};
+
+================================================================
+// FILE: components/layout/Sidebar.tsx
+================================================================
+
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, HardDrive, Zap, Menu, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface SidebarProps {
+  className?: string;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
+  const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+
+  // Close drawer automatically on route navigation
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  const navItems = [
+    {
+      name: "Dashboard",
+      href: "/",
+      icon: LayoutDashboard,
+      active: pathname === "/",
+    },
+    {
+      name: "Storage",
+      href: "/storage",
+      icon: HardDrive,
+      active: pathname.startsWith("/storage"),
+    },
+  ];
+
+  const renderNavLinks = (onItemClick?: () => void) => (
+    <nav className="space-y-1">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            onClick={onItemClick}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all",
+              item.active
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold"
+                : "text-slate-400 hover:text-slate-200 hover:bg-[#0D1424]"
+            )}
+          >
+            <Icon className={cn("w-4 h-4", item.active ? "text-white" : "text-slate-400")} />
+            <span>{item.name}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
+  const renderUserProfile = () => (
+    <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-[#0D1424] transition-colors cursor-pointer">
+      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center text-xs font-bold font-mono shadow-sm shrink-0">
+        S
+      </div>
+      <div className="flex flex-col min-w-0">
+        <span className="text-xs font-semibold text-slate-200 truncate">Saiteja</span>
+        <span className="text-[10px] text-slate-500 font-mono">RunSync Admin</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* ================================================================= */}
+      {/* MOBILE TOP BAR (Visible on small screens only)                     */}
+      {/* ================================================================= */}
+      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#080D1A] border-b border-[#151D2E] shrink-0 z-40">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
+            <Zap className="w-3.5 h-3.5 fill-current" />
+          </div>
+          <span className="font-extrabold text-sm tracking-tight text-white">
+            RunSync
+          </span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+            2.0
+          </span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className="p-2 rounded-lg bg-[#0D1424] border border-[#1E2C48] text-slate-300 hover:text-white transition-colors"
+          aria-label="Toggle navigation"
+        >
+          {isOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+        </button>
+      </header>
+
+      {/* ================================================================= */}
+      {/* MOBILE SLIDE-OVER DRAWER OVERLAY                                  */}
+      {/* ================================================================= */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden animate-in fade-in duration-200"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Mobile Drawer Panel */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 w-64 bg-[#080D1A] border-r border-[#151D2E] z-50 flex flex-col justify-between md:hidden shadow-2xl transition-transform duration-200 ease-in-out",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="p-4 space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <Link
+              href="/"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2"
+            >
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
+                <Zap className="w-3.5 h-3.5 fill-current" />
+              </div>
+              <span className="font-extrabold text-sm tracking-tight text-white">
+                RunSync
+              </span>
+            </Link>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 rounded-md text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {renderNavLinks(() => setIsOpen(false))}
+        </div>
+
+        <div className="p-4 border-t border-[#151D2E]">
+          {renderUserProfile()}
+        </div>
+      </aside>
+
+      {/* ================================================================= */}
+      {/* DESKTOP PERMANENT SIDEBAR (Hidden on mobile)                       */}
+      {/* ================================================================= */}
+      <aside
+        className={cn(
+          "hidden md:flex w-64 bg-[#080D1A] border-r border-[#151D2E] flex-col justify-between shrink-0 select-none h-screen sticky top-0 z-30",
+          className
+        )}
+      >
+        {/* Top: Logo & Navigation */}
+        <div className="p-4 space-y-6">
+          <Link href="/" className="flex items-center gap-2.5 px-2 py-1 group">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
+              <Zap className="w-4 h-4 fill-current" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-base tracking-tight text-white">
+                RunSync
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                2.0
+              </span>
+            </div>
+          </Link>
+
+          {renderNavLinks()}
+        </div>
+
+        {/* Bottom: User Profile Info */}
+        <div className="p-4 border-t border-[#151D2E]">
+          {renderUserProfile()}
+        </div>
+      </aside>
+    </>
+  );
+};
+
+================================================================
+// FILE: components/ui/badge.tsx
+================================================================
+
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Sparkles, ArrowRightLeft, CheckCircle2, AlertCircle, Pause } from "lucide-react";
+
+export type BadgeVariant =
+  | "downloading"
+  | "transferring"
+  | "completed"
+  | "failed"
+  | "paused"
+  | "default"
+  | "outline";
+
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  variant?: BadgeVariant;
+  children: React.ReactNode;
+  icon?: boolean;
+}
+
+export const Badge: React.FC<BadgeProps> = ({
+  variant = "default",
+  children,
+  icon = true,
+  className,
+  ...props
+}) => {
+  const getBadgeStyle = () => {
+    switch (variant) {
+      case "downloading":
+        return "bg-purple-950/70 text-purple-300 border border-purple-700/60 shadow-[0_0_12px_-3px_rgba(168,85,247,0.3)]";
+      case "transferring":
+        return "bg-emerald-950/70 text-emerald-300 border border-emerald-700/60 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]";
+      case "completed":
+        return "bg-emerald-950/50 text-emerald-400 border border-emerald-800/40";
+      case "failed":
+        return "bg-rose-950/70 text-rose-400 border border-rose-800/60";
+      case "paused":
+        return "bg-amber-950/70 text-amber-300 border border-amber-800/60";
+      case "outline":
+        return "bg-[#070B14] text-slate-300 border border-[#1A263D]";
+      default:
+        return "bg-[#0D1424] text-slate-200 border border-[#1A263D]";
+    }
+  };
+
+  const renderIcon = () => {
+    if (!icon) return null;
+    const iconClass = "w-3 h-3 mr-1.5 shrink-0";
+    switch (variant) {
+      case "downloading":
+        return <Sparkles className={iconClass} />;
+      case "transferring":
+        return <ArrowRightLeft className={iconClass} />;
+      case "completed":
+        return <CheckCircle2 className={iconClass} />;
+      case "failed":
+        return <AlertCircle className={iconClass} />;
+      case "paused":
+        return <Pause className={iconClass} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors font-mono",
+        getBadgeStyle(),
+        className
+      )}
+      {...props}
+    >
+      {renderIcon()}
+      {children}
+    </span>
+  );
+};
+
+================================================================
+// FILE: components/ui/button.tsx
+================================================================
+
+import React from "react";
+import { cn } from "@/lib/utils";
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?:
+    | "primary"
+    | "secondary"
+    | "pillActive"
+    | "pillInactive"
+    | "ghost"
+    | "dangerCircle"
+    | "iconCircle";
+  size?: "sm" | "md" | "lg" | "icon";
+}
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = "secondary", size = "md", children, disabled, ...props }, ref) => {
+    const baseStyles =
+      "inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none";
+
+    const variantStyles = {
+      // Primary blue accent
+      primary:
+        "bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/40 active:scale-[0.98]",
+      // Dark elevated panel button
+      secondary:
+        "bg-[#0D1424] hover:bg-[#151E33] text-slate-200 border border-[#1A263D] hover:border-slate-600 rounded-xl active:scale-[0.98]",
+      // Selected pill toggle
+      pillActive:
+        "bg-white text-slate-900 rounded-full shadow-md font-semibold active:scale-[0.98]",
+      // Inactive pill toggle
+      pillInactive:
+        "bg-[#070B14] hover:bg-[#0D1424] text-slate-400 hover:text-slate-200 border border-[#1A263D] rounded-full",
+      // Ghost button
+      ghost:
+        "text-slate-400 hover:text-slate-100 hover:bg-[#0D1424] rounded-lg",
+      // Red circular action button
+      dangerCircle:
+        "w-8 h-8 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/40 p-0 flex items-center justify-center active:scale-95",
+      // Dark circular control button
+      iconCircle:
+        "w-8 h-8 rounded-full bg-[#0D1424] hover:bg-[#151E33] text-slate-300 border border-[#1A263D] p-0 flex items-center justify-center active:scale-95",
+    };
+
+    const sizeStyles = {
+      sm: "text-xs px-3 py-1.5",
+      md: "text-sm px-4 py-2",
+      lg: "text-base px-6 py-3",
+      icon: "w-9 h-9 p-0",
+    };
+
+    const isCircle = variant === "dangerCircle" || variant === "iconCircle";
+
+    return (
+      <button
+        ref={ref}
+        disabled={disabled}
+        className={cn(
+          baseStyles,
+          variantStyles[variant],
+          !isCircle && sizeStyles[size],
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+);
+
+Button.displayName = "Button";
+
+================================================================
+// FILE: components/ui/progress.tsx
+================================================================
+
+import React from "react";
+import { cn } from "@/lib/utils";
+
+interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: number; // 0 to 100
+  indicatorColor?: string;
+  height?: string;
+}
+
+export const Progress: React.FC<ProgressProps> = ({
+  value,
+  indicatorColor,
+  height = "h-1.5",
+  className,
+  ...props
+}) => {
+  const clampedValue = Math.min(Math.max(Number(value) || 0, 0), 100);
+
+  return (
+    <div
+      className={cn(
+        "w-full bg-[#070B14] rounded-full overflow-hidden border border-[#1A263D]",
+        height,
+        className
+      )}
+      role="progressbar"
+      aria-valuenow={clampedValue}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      {...props}
+    >
+      <div
+        className={cn(
+          "h-full rounded-full transition-all duration-300 ease-out",
+          indicatorColor ||
+            "bg-gradient-to-r from-blue-500 to-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+        )}
+        style={{ width: `${clampedValue}%` }}
+      />
+    </div>
+  );
+};
+
+================================================================
+// FILE: components/ui/sparkline.tsx
+================================================================
+
+import React from "react";
+import { cn } from "@/lib/utils";
+
+export type SparklineType = "line" | "bars";
+export type SparklineColor = "blue" | "emerald" | "purple" | "amber";
+
+interface SparklineProps {
+  type?: SparklineType;
+  color?: SparklineColor;
+  data?: number[];
+  className?: string;
+  width?: number;
+  height?: number;
+}
+
+export const Sparkline: React.FC<SparklineProps> = ({
+  type = "line",
+  color = "blue",
+  data = [12, 18, 14, 25, 20, 28, 22, 34, 30],
+  className,
+  width = 96,
+  height = 36,
+}) => {
+  const colorMap = {
+    blue: {
+      stroke: "#38BDF8",
+      fill: "#0284C7",
+      bar: "fill-blue-500",
+      glow: "drop-shadow(0 0 4px rgba(56,189,248,0.5))",
+    },
+    emerald: {
+      stroke: "#34D399",
+      fill: "#059669",
+      bar: "fill-emerald-500",
+      glow: "drop-shadow(0 0 4px rgba(52,211,153,0.5))",
+    },
+    purple: {
+      stroke: "#C084FC",
+      fill: "#7E22CE",
+      bar: "fill-purple-500",
+      glow: "drop-shadow(0 0 4px rgba(192,132,252,0.5))",
+    },
+    amber: {
+      stroke: "#FBBF24",
+      fill: "#D97706",
+      bar: "fill-amber-500",
+      glow: "drop-shadow(0 0 4px rgba(251,191,36,0.5))",
+    },
+  };
+
+  const selectedColor = colorMap[color];
+  const safeData = data.length > 0 ? data : [0];
+
+  // Renders vertical micro-bars (Completed & Extracted KPIs)
+  if (type === "bars") {
+    const maxVal = Math.max(...safeData, 1);
+    const barWidth = 4;
+    const gap = 4;
+    const totalBars = safeData.length;
+    const svgWidth = totalBars * (barWidth + gap);
+
+    return (
+      <svg
+        width={svgWidth}
+        height={height}
+        viewBox={`0 0 ${svgWidth} ${height}`}
+        className={cn("overflow-visible", className)}
+      >
+        {safeData.map((val, index) => {
+          const barHeight = Math.max((val / maxVal) * (height - 6), 3);
+          const x = index * (barWidth + gap);
+          const y = height - barHeight;
+          const opacity = 0.4 + (index / totalBars) * 0.6;
+
+          return (
+            <rect
+              key={index}
+              x={x}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              rx={2}
+              className={selectedColor.bar}
+              style={{ opacity }}
+            />
+          );
+        })}
+      </svg>
+    );
+  }
+
+  // Renders smooth SVG wave curves (Active Transfers & Speed KPIs)
+  const min = Math.min(...safeData);
+  const max = Math.max(...safeData);
+  const range = max - min || 1;
+  const padding = 4;
+  const usableHeight = height - padding * 2;
+
+  // Safe point normalization (prevents divide-by-zero on single-item data)
+  const safeDivisor = Math.max(safeData.length - 1, 1);
+
+  const points = safeData.map((val, i) => {
+    const x = (i / safeDivisor) * (width - 8) + 4;
+    const y = height - padding - ((val - min) / range) * usableHeight;
+    return { x, y };
+  });
+
+  let pathD = `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 1) {
+    pathD += ` L ${width - 4} ${points[0].y}`;
+  } else {
+    for (let i = 0; i < points.length - 1; i++) {
+      const curr = points[i];
+      const next = points[i + 1];
+      const cpX = (curr.x + next.x) / 2;
+      pathD += ` C ${cpX} ${curr.y}, ${cpX} ${next.y}, ${next.x} ${next.y}`;
+    }
+  }
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className={cn("overflow-visible", className)}
+    >
+      <path
+        d={pathD}
+        fill="none"
+        stroke={selectedColor.stroke}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        style={{ filter: selectedColor.glow }}
+      />
+    </svg>
+  );
+};
+
+================================================================
+// FILE: hooks/useCodespaceStatus.ts
+================================================================
+
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { checkBackendHealth, wakeCodespaceInstance } from "@/lib/api";
+
+export type CodespaceStatusType = "online" | "booting" | "standby" | "degraded";
+
+export function useCodespaceStatus(pollIntervalMs: number = 5000) {
+  const [status, setStatus] = useState<CodespaceStatusType>("standby");
+  const [cluster, setCluster] = useState<string>("Codespace • US-West");
+  const [isBooting, setIsBooting] = useState<boolean>(false);
+  const [engineState, setEngineState] = useState<string>("idle");
+  const [lastCheckedTime, setLastCheckedTime] = useState<string>("");
+
+  const isBootingRef = useRef(isBooting);
+  isBootingRef.current = isBooting;
+
+  const isCheckingRef = useRef(false);
+
+  const checkStatus = useCallback(async (): Promise<boolean> => {
+    if (isCheckingRef.current) return false;
+    isCheckingRef.current = true;
+
+    try {
+      const health = await checkBackendHealth();
+      setLastCheckedTime(new Date().toLocaleTimeString());
+
+      if (health && health.status === "online") {
+        setStatus("online");
+        setIsBooting(false);
+        if (health.cluster) setCluster(health.cluster);
+        if (health.engine) setEngineState(health.engine);
+        return true;
+      } else if (health && health.status === "standby") {
+        if (!isBootingRef.current) {
+          setStatus("standby");
+          setEngineState("idle");
+        }
+        return false;
+      } else {
+        // Outage or degraded response
+        if (!isBootingRef.current) {
+          setStatus((prev) => (prev === "online" ? "degraded" : "standby"));
+        }
+        return false;
+      }
+    } catch {
+      if (!isBootingRef.current) {
+        setStatus((prev) => (prev === "online" ? "degraded" : "standby"));
+      }
+      return false;
+    } finally {
+      isCheckingRef.current = false;
+    }
+  }, []);
+
+  // Main unified polling loop using recursive timeout (no overlapping requests)
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let isMounted = true;
+
+    const schedulePoll = () => {
+      const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+      const delay = isHidden ? 15000 : isBooting ? 2500 : pollIntervalMs;
+
+      timeoutId = setTimeout(async () => {
+        if (isMounted) {
+          await checkStatus();
+          if (isMounted) schedulePoll();
+        }
+      }, delay);
+    };
+
+    checkStatus().then(() => {
+      if (isMounted) schedulePoll();
+    });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkStatus();
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
+    };
+  }, [checkStatus, pollIntervalMs, isBooting]);
+
+  /**
+   * Dispatches GitHub Action to wake up Codespace
+   */
+  const wakeUpCodespace = useCallback(async (): Promise<boolean> => {
+    setIsBooting(true);
+    setStatus("booting");
+
+    const dispatched = await wakeCodespaceInstance();
+    if (!dispatched) {
+      setIsBooting(false);
+      setStatus("standby");
+      return false;
+    }
+
+    // Immediately trigger status check
+    await checkStatus();
+    return true;
+  }, [checkStatus]);
+
+  return {
+    status,
+    isOnline: status === "online",
+    isBooting,
+    cluster,
+    engineState,
+    lastCheckedTime,
+    checkStatus,
+    wakeUpCodespace,
+  };
+}
+
+
+================================================================
+// FILE: hooks/useTelemetry.ts
+================================================================
+
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  TelemetrySnapshot,
+  ActiveTaskItem,
+  KpiMetrics,
+  SpeedDataPoint,
+} from "@/types/telemetry";
+import {
+  fetchBackendStatus,
+  enqueueExtraction,
+  sendTaskAction,
+} from "@/lib/api";
+import { EnqueueTaskRequest, BackendEngineStatus } from "@/types/api";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { getAuthHeaders } from "@/lib/clientAuth";
+import { formatBytes } from "@/lib/utils";
+
+const MAX_HISTORY_POINTS = 20;
+
+function getLocalDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseBytesFromTaskName(name: string): number {
+  if (!name) return 0;
+  const match = name.match(/(\d+(?:\.\d+)?)\s*(gb|gib|mb|mib|kb|kib)/i);
+  if (!match) return 0;
+
+  const val = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+
+  if (unit.startsWith("g")) return Math.round(val * 1024 * 1024 * 1024);
+  if (unit.startsWith("m")) return Math.round(val * 1024 * 1024);
+  if (unit.startsWith("k")) return Math.round(val * 1024);
+  return 0;
+}
+
+const createInitialSpeedHistory = (): SpeedDataPoint[] => {
+  return Array.from({ length: MAX_HISTORY_POINTS }, (_, i) => ({
+    time: `--:--:${String(i).padStart(2, "0")}`,
+    speed: 0,
+  }));
+};
+
+const initialKpis: KpiMetrics = {
+  activeTransfers: { value: 0, trend: "idle", isPositive: false },
+  completed: { value: 0, trend: "0 this week", isPositive: true },
+  dataExtracted: { value: "0 B", trend: "+0 B today", isPositive: true },
+  avgSpeed: { value: "0.00 MB/s", trend: "0.00 MB/s", isPositive: false },
+};
+
+const initialSnapshot: TelemetrySnapshot = {
+  kpis: initialKpis,
+  tasks: [],
+  transferSpeedMbps: 0,
+  speedHistory: createInitialSpeedHistory(),
+  storage: {
+    usedBytes: 0,
+    totalBytes: 5 * 1024 * 1024 * 1024 * 1024,
+  },
+  isStale: false,
+};
+
+export function parseSpeedStringToMbps(speedStr: string | undefined): number {
+  if (!speedStr) return 0;
+  const cleaned = speedStr.trim().toLowerCase();
+  if (
+    cleaned.includes("finish") ||
+    cleaned.includes("idle") ||
+    cleaned.includes("done") ||
+    cleaned.includes("offline") ||
+    cleaned.includes("calculating")
+  ) {
+    return 0;
+  }
+
+  const numericMatch = cleaned.match(/([\d.]+)/);
+  if (!numericMatch) return 0;
+
+  const rawVal = parseFloat(numericMatch[1]);
+  if (isNaN(rawVal)) return 0;
+
+  if (cleaned.includes("gb/s") || cleaned.includes("gib/s") || cleaned.includes("gbyte/s")) {
+    return rawVal * 1024;
+  }
+  if (cleaned.includes("mb/s") || cleaned.includes("mib/s") || cleaned.includes("mbyte/s")) {
+    return rawVal;
+  }
+  if (cleaned.includes("kb/s") || cleaned.includes("kib/s") || cleaned.includes("kbyte/s")) {
+    return rawVal / 1024;
+  }
+  if (cleaned.includes("b/s") || cleaned.includes("byte/s")) {
+    return rawVal / (1024 * 1024);
+  }
+  return rawVal;
+}
+
+export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
+  const [snapshot, setSnapshot] = useState<TelemetrySnapshot>(initialSnapshot);
+  const [firestoreBytes24h, setFirestoreBytes24h] = useState<number>(0);
+  const [firestoreTotalBytes, setFirestoreTotalBytes] = useState<number>(0);
+  const [firestoreBytesToday, setFirestoreBytesToday] = useState<number>(0);
+  const [hourlyTransfers, setHourlyTransfers] = useState<Record<string, number>>({});
+
+  const speedHistoryRef = useRef<SpeedDataPoint[]>(createInitialSpeedHistory());
+  const completedFiredRef = useRef<boolean>(false);
+  const isPollingRef = useRef<boolean>(false);
+  const activeTasksCountRef = useRef<number>(0);
+  const lastActiveTaskRef = useRef<ActiveTaskItem | null>(null);
+
+  // 1. Commit Task Completion via Server API (Strict idempotency & validation)
+  const commitTaskCompletionToFirestore = async (task: ActiveTaskItem | null) => {
+    try {
+      const taskId = task?.id || `task_${Date.now()}`;
+      const taskBytes = task ? parseBytesFromTaskName(task.name) : 0;
+      const headers = await getAuthHeaders();
+
+      const res = await fetch("/api/metrics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify({
+          taskId,
+          bytes: taskBytes,
+          name: task?.name || "Completed Stream",
+          source: task?.source || "huggingface",
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn("[Metrics Sync] Failed to record completion:", errJson);
+      } else {
+        console.log(`[Metrics Sync] Task completion recorded via authenticated API: ${taskId}`);
+      }
+    } catch (err) {
+      console.warn("[Metrics Sync] Error calling /api/metrics:", err);
+    }
+  };
+
+  // 2. Real-time listener for Firestore analytics document
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "analytics", "dashboard"),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const todayStr = getLocalDateString();
+          const isSameDay = data.date === todayStr;
+
+          const completedCount = Number(data.completed_count) || 0;
+          const completedWeek = Number(data.completed_this_week) || 0;
+          const totalBytes = Number(data.total_bytes_extracted) || 0;
+          const todayBytes = isSameDay ? Number(data.bytes_today) || 0 : 0;
+
+          const hourly: Record<string, number> = data.hourly_transfers || {};
+          const total24h = Object.values(hourly).reduce(
+            (sum: number, val: any) => sum + (Number(val) || 0),
+            0
+          ) as number;
+
+          setFirestoreTotalBytes(totalBytes);
+          setFirestoreBytes24h(total24h);
+          setFirestoreBytesToday(todayBytes);
+          setHourlyTransfers(hourly);
+
+          setSnapshot((prev) => ({
+            ...prev,
+            hourlyTransfers: hourly,
+            kpis: {
+              ...prev.kpis,
+              completed: {
+                ...prev.kpis.completed,
+                value: completedCount,
+                trend: `+${completedWeek} this week`,
+              },
+              dataExtracted: {
+                ...prev.kpis.dataExtracted,
+                value: formatBytes(totalBytes),
+                trend: `+${formatBytes(todayBytes)} today`,
+              },
+            },
+          }));
+        }
+      },
+      (err) => console.warn("[Firestore Telemetry Sync Error]", err)
+    );
+
+    return () => unsub();
+  }, []);
+
+  // 3. Telemetry Poller & Completion Watcher
+  const pollTelemetry = useCallback(async () => {
+    if (isPollingRef.current) return;
+    isPollingRef.current = true;
+
+    try {
+      const nowTimeStr = new Date().toLocaleTimeString("en-US", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+
+      if (!isOnline) {
+        // When offline, preserve previous task list but label as stale
+        const updatedHistory = [
+          ...speedHistoryRef.current.slice(1),
+          { time: nowTimeStr, speed: 0 },
+        ];
+        speedHistoryRef.current = updatedHistory;
+
+        setSnapshot((prev) => ({
+          ...prev,
+          isStale: true,
+          transferSpeedMbps: 0,
+          speedHistory: updatedHistory,
+          kpis: {
+            ...prev.kpis,
+            avgSpeed: { value: "0.00 MB/s", trend: "offline", isPositive: false },
+          },
+        }));
+        completedFiredRef.current = false;
+        return;
+      }
+
+      const data: BackendEngineStatus | null = await fetchBackendStatus();
+      if (!data) {
+        // Backend temporarily unreachable; preserve state and set stale flag
+        setSnapshot((prev) => ({ ...prev, isStale: true }));
+        return;
+      }
+
+      const statusStr = (data.status || "").toLowerCase();
+      const isFinished =
+        statusStr.includes("complete") ||
+        statusStr.includes("finish") ||
+        statusStr.includes("success") ||
+        (data as any).completed === true;
+
+      if (isFinished && !completedFiredRef.current) {
+        completedFiredRef.current = true;
+        commitTaskCompletionToFirestore(lastActiveTaskRef.current);
+        if (onJobCompleted) onJobCompleted();
+      }
+
+      const tasks: ActiveTaskItem[] = [];
+      let maxTaskSpeedMb = 0;
+
+      if (Array.isArray(data.active_tasks) && data.active_tasks.length > 0) {
+        data.active_tasks.forEach((t) => {
+          const taskSpeedNum = parseSpeedStringToMbps(t.speed);
+          if (taskSpeedNum > maxTaskSpeedMb) maxTaskSpeedMb = taskSpeedNum;
+
+          tasks.push({
+            id: t.id,
+            name: t.name,
+            source: t.type === "huggingface" ? "HuggingFace" : "Torrent",
+            status: t.status === "transferring" ? "transferring" : "downloading",
+            progress: Number(t.progress) || 0,
+            speed: t.speed || "0.00 MB/s",
+            eta: t.eta || "-",
+          });
+        });
+      } else if (
+        data.name &&
+        (statusStr === "downloading" || statusStr === "transferring" || statusStr === "streaming")
+      ) {
+        // Support single-task root response formats
+        const rootProgress = parseFloat(data.progress || "0") || 0;
+        const rootSpeed = parseSpeedStringToMbps(data.speed || data.upload_speed);
+        if (rootSpeed > maxTaskSpeedMb) maxTaskSpeedMb = rootSpeed;
+
+        tasks.push({
+          id: "active-stream",
+          name: data.name,
+          source: data.name.toLowerCase().includes("hf") ? "HuggingFace" : "Torrent",
+          status: statusStr === "transferring" ? "transferring" : "downloading",
+          progress: rootProgress,
+          speed: data.speed || data.upload_speed || "0.00 MB/s",
+          eta: data.upload_eta || "-",
+        });
+      }
+
+      if (tasks.length > 0) {
+        lastActiveTaskRef.current = tasks[0];
+        completedFiredRef.current = false;
+      }
+
+      activeTasksCountRef.current = tasks.length;
+
+      const downloadSpeedNum = parseSpeedStringToMbps(data.speed);
+      const uploadSpeedNum = parseSpeedStringToMbps(data.upload_speed);
+      const activeSpeedValue = Math.max(uploadSpeedNum, downloadSpeedNum, maxTaskSpeedMb);
+
+      const nextHistory = [
+        ...speedHistoryRef.current.slice(1),
+        { time: nowTimeStr, speed: Number(activeSpeedValue.toFixed(2)) },
+      ];
+      speedHistoryRef.current = nextHistory;
+
+      let displaySpeedString = "0.00 MB/s";
+      if (tasks.length > 0 && activeSpeedValue > 0) {
+        displaySpeedString = `${activeSpeedValue.toFixed(2)} MB/s`;
+      }
+
+      setSnapshot((prev) => ({
+        ...prev,
+        isStale: false,
+        tasks,
+        transferSpeedMbps: Number(activeSpeedValue.toFixed(2)),
+        speedHistory: nextHistory,
+        kpis: {
+          ...prev.kpis,
+          activeTransfers: {
+            value: tasks.length,
+            trend: tasks.length > 0 ? `+${tasks.length} running` : "idle",
+            isPositive: tasks.length > 0,
+          },
+          avgSpeed: {
+            value: displaySpeedString,
+            trend: tasks.length > 0 ? "+active stream" : "0.00 MB/s",
+            isPositive: tasks.length > 0,
+          },
+        },
+      }));
+    } finally {
+      isPollingRef.current = false;
+    }
+  }, [isOnline, onJobCompleted]);
+
+  // 4. Adaptive Polling Loop (Pauses/throttles when tab is backgrounded)
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let isMounted = true;
+
+    const scheduleNextPoll = () => {
+      const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+      const hasWork = activeTasksCountRef.current > 0;
+
+      // Adaptive interval: 1s while active, 3.5s while idle, 10s while offline, 15s while tab is hidden
+      const delay = isHidden ? 15000 : !isOnline ? 10000 : hasWork ? 1000 : 3500;
+
+      timeoutId = setTimeout(async () => {
+        if (isMounted) {
+          await pollTelemetry();
+          if (isMounted) scheduleNextPoll();
+        }
+      }, delay);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        pollTelemetry();
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
+    pollTelemetry().then(() => {
+      if (isMounted) scheduleNextPoll();
+    });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
+    };
+  }, [isOnline, pollTelemetry]);
+
+  const triggerExtraction = async (req: EnqueueTaskRequest) => {
+    completedFiredRef.current = false;
+    const res = await enqueueExtraction(req);
+    await pollTelemetry();
+    return res;
+  };
+
+  const pauseTask = async (taskId: string) => {
+    await sendTaskAction(taskId, "pause");
+  };
+
+  const resumeTask = async (taskId: string) => {
+    await sendTaskAction(taskId, "resume");
+  };
+
+  const cancelTask = async (taskId: string) => {
+    await sendTaskAction(taskId, "cancel");
+    await pollTelemetry();
+  };
+
+  return {
+    snapshot,
+    firestoreBytes24h,
+    firestoreTotalBytes,
+    firestoreBytesToday,
+    hourlyTransfers,
+    triggerExtraction,
+    pauseTask,
+    resumeTask,
+    cancelTask,
+  };
+}
+
+
+================================================================
+// FILE: lib/api.ts
+================================================================
+
+import {
+  BackendEngineStatus,
+  BackendHealthResponse,
+  EnqueueResponse,
+  EnqueueTaskRequest,
+} from "@/types/api";
+import { getAuthHeaders } from "@/lib/clientAuth";
+
+const BACKEND_PROXY_URL = "/api/backend";
+
+/**
+ * Health check probe routed through Next.js proxy with authentication
+ */
+export async function checkBackendHealth(): Promise<BackendHealthResponse | null> {
+  try {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_PROXY_URL}/health`, {
+      headers: {
+        ...authHeaders,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (!data) return null;
+
+    return data.status === "online" ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch real-time engine telemetry and active streams
+ */
+export async function fetchBackendStatus(): Promise<BackendEngineStatus | null> {
+  try {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_PROXY_URL}/status`, {
+      headers: {
+        ...authHeaders,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  } catch {
+    return null;
+  }
+}
+
+export const getEngineTelemetry = fetchBackendStatus;
+
+/**
+ * Enqueue a torrent / magnet link
+ */
+export async function enqueueTorrent(magnetLink: string): Promise<EnqueueResponse> {
+  const authHeaders = await getAuthHeaders();
+  const formData = new FormData();
+  formData.append("magnet_link", magnetLink.trim());
+
+  const res = await fetch(`${BACKEND_PROXY_URL}/enqueue`, {
+    method: "POST",
+    headers: authHeaders,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return {
+      status: "error",
+      message: err.message || err.error || `Enqueue failed with HTTP ${res.status}`,
+    };
+  }
+
+  return await res.json();
+}
+
+/**
+ * Enqueue a Hugging Face model/dataset repository
+ */
+export async function enqueueHuggingFace(repoId: string): Promise<EnqueueResponse> {
+  const authHeaders = await getAuthHeaders();
+  const formData = new FormData();
+  formData.append("repo_id", repoId.trim());
+
+  const res = await fetch(`${BACKEND_PROXY_URL}/enqueue_hf`, {
+    method: "POST",
+    headers: authHeaders,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return {
+      status: "error",
+      message: err.message || err.error || `HF enqueue failed with HTTP ${res.status}`,
+    };
+  }
+
+  return await res.json();
+}
+
+/**
+ * Unified extractor dispatcher
+ */
+export async function enqueueExtraction(req: EnqueueTaskRequest): Promise<EnqueueResponse> {
+  const input = req.url.trim();
+
+  const isHf =
+    req.detectionMode === "huggingface" ||
+    input.includes("huggingface.co") ||
+    input.includes("hf.co");
+
+  if (isHf) {
+    return await enqueueHuggingFace(input);
+  } else {
+    return await enqueueTorrent(input);
+  }
+}
+
+/**
+ * Task Management Commands
+ * Note: The Codespace worker does not currently expose granular per-task pause/resume endpoints.
+ * Returning unsupported rather than faking success, per roadmap Phase 5 specifications.
+ */
+export async function sendTaskAction(
+  taskId: string,
+  action: "pause" | "resume" | "cancel"
+): Promise<{ status: "success" | "unsupported" | "error"; message?: string }> {
+  if (action === "pause" || action === "resume") {
+    // Truthful report: worker API does not implement per-task pause/resume
+    return {
+      status: "unsupported",
+      message: `${action.toUpperCase()} is not currently supported by the active Codespace worker runtime.`,
+    };
+  }
+
+  if (action === "cancel") {
+    try {
+      const authHeaders = await getAuthHeaders();
+      const formData = new FormData();
+      formData.append("task_id", taskId);
+
+      const res = await fetch(`${BACKEND_PROXY_URL}/cancel`, {
+        method: "POST",
+        headers: authHeaders,
+        body: formData,
+      });
+
+      if (res.ok) {
+        return { status: "success" };
+      }
+      return { status: "error", message: `Cancel returned HTTP ${res.status}` };
+    } catch (err: any) {
+      return { status: "error", message: err.message || "Failed to cancel task" };
+    }
+  }
+
+  return { status: "unsupported", message: "Action not supported" };
+}
+
+/**
+ * Dispatches GitHub Actions wake signal from Next.js server route
+ */
+export async function wakeCodespaceInstance(): Promise<boolean> {
+  try {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/codespace/wake", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+      },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+
+================================================================
+// FILE: lib/clientAuth.ts
+================================================================
+
+"use client";
+
+import { auth } from "@/lib/firebase";
+
+/**
+ * Returns the current authenticated user's Firebase ID token
+ * formatted for the HTTP Authorization header.
+ */
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      return {
+        Authorization: `Bearer ${token}`,
+      };
+    }
+  } catch (error) {
+    console.warn("[Client Auth] Failed to retrieve Firebase ID token:", error);
+  }
+
+  return {};
+}
+
+/**
+ * Retrieve raw ID token string (useful for authenticated download query params)
+ */
+export async function getAuthToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      return await user.getIdToken();
+    }
+  } catch {
+    // Return null on failure
+  }
+
+  return null;
+}
+
+
+================================================================
+// FILE: lib/env.ts
+================================================================
+
+import { z } from "zod";
+
+/**
+ * Server-side Environment Variables Schema
+ * Validates critical infrastructure secrets and endpoints.
+ * Fails closed instead of using dangerous fallbacks or leaking tokens.
+ */
+const serverEnvSchema = z.object({
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  
+  // Backend worker tunnel/host URL (server-only)
+  BACKEND_URL: z.string().url("BACKEND_URL must be a valid URL").optional(),
+
+  // Google Drive Service Account Configuration
+  GDRIVE_CLIENT_EMAIL: z.string().email("GDRIVE_CLIENT_EMAIL must be a valid service account email").optional(),
+  GDRIVE_PRIVATE_KEY: z.string().min(20, "GDRIVE_PRIVATE_KEY must be configured").optional(),
+  GDRIVE_FOLDER_ID: z.string().min(5, "GDRIVE_FOLDER_ID must be configured").optional(),
+
+  // GitHub Dispatch Token for Codespace Wake
+  GITHUB_DISPATCH_TOKEN: z.string().min(10, "GITHUB_DISPATCH_TOKEN must be configured").optional(),
+  GITHUB_REPO_OWNER: z.string().default("tej-mega-third"),
+  GITHUB_REPO_NAME: z.string().default("cloud-extracter"),
+
+  // Whitelisted user emails for server-side authorization
+  ALLOWED_EMAILS: z.string().optional(),
+  NEXT_PUBLIC_ALLOWED_EMAILS: z.string().optional(),
+
+  // Firebase Project
+  FIREBASE_PROJECT_ID: z.string().default("authentication-1de46"),
+});
+
+export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+let parsedEnv: ServerEnv | null = null;
+
+export function getServerEnv(): ServerEnv {
+  if (parsedEnv) return parsedEnv;
+
+  const raw = {
+    NODE_ENV: process.env.NODE_ENV,
+    BACKEND_URL: process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL,
+    GDRIVE_CLIENT_EMAIL: process.env.GDRIVE_CLIENT_EMAIL,
+    GDRIVE_PRIVATE_KEY: process.env.GDRIVE_PRIVATE_KEY,
+    GDRIVE_FOLDER_ID: process.env.GDRIVE_FOLDER_ID || process.env.NEXT_PUBLIC_GDRIVE_FOLDER_ID,
+    GITHUB_DISPATCH_TOKEN: process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_TOKEN,
+    GITHUB_REPO_OWNER: process.env.GITHUB_REPO_OWNER,
+    GITHUB_REPO_NAME: process.env.GITHUB_REPO_NAME,
+    ALLOWED_EMAILS: process.env.ALLOWED_EMAILS || process.env.NEXT_PUBLIC_ALLOWED_EMAILS,
+    NEXT_PUBLIC_ALLOWED_EMAILS: process.env.NEXT_PUBLIC_ALLOWED_EMAILS,
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+  };
+
+  const result = serverEnvSchema.safeParse(raw);
+  if (!result.success) {
+    console.error("[Environment Config Error] Invalid server environment variables:", result.error.format());
+    // In production, throw so deployment fails fast and safely
+    if (process.env.NODE_ENV === "production" && !raw.BACKEND_URL) {
+      throw new Error(`CRITICAL: Server environment validation failed. Missing BACKEND_URL.`);
+    }
+    parsedEnv = raw as ServerEnv;
+    return parsedEnv;
+  }
+
+  parsedEnv = result.data;
+  return parsedEnv;
+}
+
+export function getAllowedEmails(): string[] {
+  const env = getServerEnv();
+  const rawList = env.ALLOWED_EMAILS || env.NEXT_PUBLIC_ALLOWED_EMAILS || "";
+  return rawList
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+
+================================================================
+// FILE: lib/firebase.ts
+================================================================
+
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD2gwTZzpRqJxi818uayUpcwTz_ry_j9HM",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "authentication-1de46.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "authentication-1de46",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "authentication-1de46.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "863031272001",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:863031272001:web:aa365a54665aa567ff5cc0",
+};
+
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+export const db = getFirestore(app);
+
+
+================================================================
+// FILE: lib/github.ts
+================================================================
+
+import { getServerEnv } from "@/lib/env";
+
+export async function triggerCodespaceWorkflow(): Promise<{ success: boolean; message: string }> {
+  const env = getServerEnv();
+  const token = env.GITHUB_DISPATCH_TOKEN;
+  const owner = env.GITHUB_REPO_OWNER;
+  const repo = env.GITHUB_REPO_NAME;
+
+  if (!token) {
+    return {
+      success: false,
+      message: "Server configuration missing: GITHUB_DISPATCH_TOKEN is not defined in environment.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/dispatches`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          event_type: "trigger_pipeline",
+        }),
+        signal: controller.signal,
+      }
+    );
+
+    // GitHub returns 204 No Content on a successful dispatch
+    if (response.status === 204 || response.ok) {
+      return {
+        success: true,
+        message: "Codespace wake signal dispatched successfully to GitHub Actions.",
+      };
+    }
+
+    const errData = await response.json().catch(() => ({}));
+    return {
+      success: false,
+      message: errData.message || `GitHub dispatch failed with HTTP ${response.status}`,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.name === "AbortError" ? "GitHub API request timed out" : "Network anomaly reaching GitHub API",
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+
+================================================================
+// FILE: lib/rateLimit.ts
+================================================================
+
+/**
+ * In-memory sliding window rate limiter for Next.js API routes
+ * Prevents endpoint abuse, brute force, and rapid-fire wake/enqueue calls.
+ */
+
+interface RateLimitRecord {
+  count: number;
+  resetAt: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitRecord>();
+
+// Clean up stale entries every 5 minutes to prevent memory leaks
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of rateLimitStore.entries()) {
+      if (now > record.resetAt) {
+        rateLimitStore.delete(key);
+      }
+    }
+  }, 5 * 60 * 1000).unref?.();
+}
+
+export interface RateLimitOptions {
+  windowMs: number; // e.g. 60000 for 1 minute
+  maxRequests: number; // e.g. 10 requests per minute
+}
+
+export function checkRateLimit(
+  identifier: string,
+  options: RateLimitOptions = { windowMs: 60 * 1000, maxRequests: 20 }
+): { allowed: boolean; remaining: number; resetInMs: number } {
+  const now = Date.now();
+  const existing = rateLimitStore.get(identifier);
+
+  if (!existing || now > existing.resetAt) {
+    rateLimitStore.set(identifier, {
+      count: 1,
+      resetAt: now + options.windowMs,
+    });
+    return {
+      allowed: true,
+      remaining: options.maxRequests - 1,
+      resetInMs: options.windowMs,
+    };
+  }
+
+  if (existing.count >= options.maxRequests) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetInMs: Math.max(0, existing.resetAt - now),
+    };
+  }
+
+  existing.count += 1;
+  return {
+    allowed: true,
+    remaining: options.maxRequests - existing.count,
+    resetInMs: Math.max(0, existing.resetAt - now),
+  };
+}
+
+
+================================================================
+// FILE: lib/serverAuth.ts
+================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getServerEnv, getAllowedEmails } from "@/lib/env";
+
+export type UserRole = "admin" | "operator" | "viewer";
+
+export interface AuthenticatedUser {
+  uid: string;
+  email: string;
+  role: UserRole;
+}
+
+export type AuthResult =
+  | { authenticated: true; authorized: true; user: AuthenticatedUser }
+  | { authenticated: false; authorized: false; response: NextResponse }
+  | { authenticated: true; authorized: false; response: NextResponse };
+
+function getFirebaseAdminAuth() {
+  const env = getServerEnv();
+  const projectId = env.FIREBASE_PROJECT_ID || "authentication-1de46";
+
+  const app = getApps().length > 0 ? getApp() : initializeApp({ projectId });
+  return getAuth(app);
+}
+
+/**
+ * Server-side Authentication & Authorization Verifier
+ * Verifies the incoming Firebase ID token against Google's public keys.
+ * Enforces email whitelist and role requirements.
+ */
+export async function verifyServerAuth(
+  req: NextRequest,
+  options?: {
+    requiredRole?: UserRole;
+  }
+): Promise<AuthResult> {
+  const env = getServerEnv();
+  const isDevOrTest = env.NODE_ENV === "development" || env.NODE_ENV === "test";
+
+  // 1. Extract Bearer token from Authorization header or __session cookie
+  let token: string | null = null;
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7).trim();
+  } else {
+    token = req.cookies.get("__session")?.value || null;
+  }
+
+  // Allow test header strictly in development/test mode for automated tests
+  if (isDevOrTest && !token && req.headers.get("x-test-auth-email")) {
+    const testEmail = (req.headers.get("x-test-auth-email") || "").toLowerCase();
+    const allowed = getAllowedEmails();
+    if (allowed.length === 0 || allowed.includes(testEmail)) {
+      return {
+        authenticated: true,
+        authorized: true,
+        user: { uid: "test-user-id", email: testEmail, role: "admin" },
+      };
+    } else {
+      return {
+        authenticated: true,
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Forbidden: User is not authorized to access this resource" },
+          { status: 403 }
+        ),
+      };
+    }
+  }
+
+  if (!token) {
+    return {
+      authenticated: false,
+      authorized: false,
+      response: NextResponse.json(
+        { error: "Unauthorized: Missing authentication token" },
+        { status: 401 }
+      ),
+    };
+  }
+
+  try {
+    const adminAuth = getFirebaseAdminAuth();
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const email = (decodedToken.email || "").toLowerCase();
+
+    if (!email) {
+      return {
+        authenticated: false,
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Unauthorized: Token contains no verified email" },
+          { status: 401 }
+        ),
+      };
+    }
+
+    // 2. Check Allowed Emails Whitelist
+    const allowedEmails = getAllowedEmails();
+    const isAllowed = allowedEmails.length === 0 || allowedEmails.includes(email);
+
+    if (!isAllowed) {
+      return {
+        authenticated: true,
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Forbidden: Your account is not authorized to access RunSync" },
+          { status: 403 }
+        ),
+      };
+    }
+
+    // First email in list is admin, others are operators
+    const role: UserRole =
+      allowedEmails.length > 0 && allowedEmails[0] === email ? "admin" : "operator";
+
+    if (options?.requiredRole === "admin" && role !== "admin") {
+      return {
+        authenticated: true,
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Forbidden: Administrator privileges required for this action" },
+          { status: 403 }
+        ),
+      };
+    }
+
+    return {
+      authenticated: true,
+      authorized: true,
+      user: {
+        uid: decodedToken.uid,
+        email,
+        role,
+      },
+    };
+  } catch (error: any) {
+    console.warn("[Server Auth] Token verification rejected:", error?.message || error);
+    return {
+      authenticated: false,
+      authorized: false,
+      response: NextResponse.json(
+        { error: "Unauthorized: Invalid or expired authentication token" },
+        { status: 401 }
+      ),
+    };
+  }
+}
+
+
+================================================================
+// FILE: lib/telemetryUtils.ts
+================================================================
+
+/**
+ * Telemetry formatting and unit conversion utilities
+ */
+
+export function formatBytes(bytes: number, decimals: number = 1): string {
+  if (!bytes || bytes <= 0 || isNaN(bytes)) return "0 B";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["B", "KB", "MB", "GB", "TB", "PB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const safeIndex = Math.min(Math.max(i, 0), sizes.length - 1);
+  return `${parseFloat((bytes / Math.pow(k, safeIndex)).toFixed(dm))} ${sizes[safeIndex]}`;
+}
+
+export function parseSpeedStringToMbps(speedStr: string | undefined): number {
+  if (!speedStr) return 0;
+  const cleaned = speedStr.trim().toLowerCase();
+  if (
+    cleaned.includes("finish") ||
+    cleaned.includes("idle") ||
+    cleaned.includes("done") ||
+    cleaned.includes("offline") ||
+    cleaned.includes("calculating")
+  ) {
+    return 0;
+  }
+
+  const numericMatch = cleaned.match(/([\d.]+)/);
+  if (!numericMatch) return 0;
+
+  const rawVal = parseFloat(numericMatch[1]);
+  if (isNaN(rawVal)) return 0;
+
+  if (cleaned.includes("gb/s") || cleaned.includes("gib/s") || cleaned.includes("gbyte/s")) {
+    return rawVal * 1024;
+  }
+  if (cleaned.includes("mb/s") || cleaned.includes("mib/s") || cleaned.includes("mbyte/s")) {
+    return rawVal;
+  }
+  if (cleaned.includes("kb/s") || cleaned.includes("kib/s") || cleaned.includes("kbyte/s")) {
+    return rawVal / 1024;
+  }
+  if (cleaned.includes("b/s") || cleaned.includes("byte/s")) {
+    return rawVal / (1024 * 1024);
+  }
+  return rawVal;
+}
+
+export function parseBytesFromTaskName(name: string): number {
+  if (!name) return 0;
+  const match = name.match(/(\d+(?:\.\d+)?)\s*(gb|gib|mb|mib|kb|kib)/i);
+  if (!match) return 0;
+
+  const val = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+
+  if (unit.startsWith("g")) return Math.round(val * 1024 * 1024 * 1024);
+  if (unit.startsWith("m")) return Math.round(val * 1024 * 1024);
+  if (unit.startsWith("k")) return Math.round(val * 1024);
+  return 0;
+}
+
+
+================================================================
+// FILE: lib/utils.ts
+================================================================
+
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+/**
+ * Combines conditional class names and merges Tailwind rules cleanly
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+/**
+ * Formats a raw byte count into standard units (B, KB, MB, GB, TB)
+ */
+export function formatBytes(bytes: number, decimals: number = 1): string {
+  if (!bytes || bytes <= 0 || isNaN(bytes)) return "0 B";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["B", "KB", "MB", "GB", "TB", "PB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const safeIndex = Math.min(Math.max(i, 0), sizes.length - 1);
+  return `${parseFloat((bytes / Math.pow(k, safeIndex)).toFixed(dm))} ${sizes[safeIndex]}`;
+}
+
+/**
+ * Formats seconds into a human-readable ETA string (e.g., "42m", "12m 42s")
+ */
+export function formatEta(seconds: number): string {
+  if (!seconds || seconds <= 0 || !isFinite(seconds)) return "-";
+  const s = Math.floor(seconds);
+  const minutes = Math.floor(s / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    const remainingMins = minutes % 60;
+    return `${hours}h ${remainingMins}m`;
+  }
+  if (minutes > 0) {
+    const remainingSecs = s % 60;
+    return remainingSecs > 0 ? `${minutes}m ${remainingSecs}s` : `${minutes}m`;
+  }
+  return `${s}s`;
+}
+
+================================================================
+// FILE: lib/validation.ts
+================================================================
+
+/**
+ * RunSync Input Validation & Normalization Library
+ * Validates extraction inputs (Hugging Face URLs/IDs, AcademicTorrents, Magnets, Infohashes)
+ * Prevents invalid/malicious payloads from reaching server endpoints or client fetchers.
+ */
+
+export type DetectedSource = "huggingface" | "academic_torrent";
+
+export interface ExtractionValidationResult {
+  valid: boolean;
+  error?: string;
+  detectedSource?: DetectedSource;
+  normalizedInput?: string;
+  isDataset?: boolean;
+  repoId?: string;
+}
+
+export function validateExtractionInput(
+  raw: string,
+  forcedBadge?: "auto" | "hf" | "academic"
+): ExtractionValidationResult {
+  if (!raw || typeof raw !== "string") {
+    return { valid: false, error: "Input cannot be empty." };
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return { valid: false, error: "Input cannot be empty." };
+  }
+
+  if (trimmed.length > 2048) {
+    return {
+      valid: false,
+      error: "Input exceeds maximum allowed length of 2048 characters.",
+    };
+  }
+
+  // Reject malicious/dangerous schemes
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.startsWith("javascript:") ||
+    lower.startsWith("data:") ||
+    lower.startsWith("vbscript:") ||
+    lower.startsWith("file:")
+  ) {
+    return { valid: false, error: "Invalid URL scheme." };
+  }
+
+  // 1. Magnet link check
+  if (lower.startsWith("magnet:?")) {
+    if (!lower.includes("xt=urn:btih:")) {
+      return {
+        valid: false,
+        error: "Magnet link must contain a valid BitTorrent infohash (xt=urn:btih:).",
+      };
+    }
+    return {
+      valid: true,
+      detectedSource: "academic_torrent",
+      normalizedInput: trimmed,
+    };
+  }
+
+  // 2. Infohash (40-char hex string or 32-char base32 string)
+  if (/^[0-9a-fA-F]{40}$/.test(trimmed)) {
+    return {
+      valid: true,
+      detectedSource: "academic_torrent",
+      normalizedInput: `magnet:?xt=urn:btih:${trimmed}`,
+    };
+  }
+  if (/^[2-7a-zA-Z]{32}$/.test(trimmed)) {
+    return {
+      valid: true,
+      detectedSource: "academic_torrent",
+      normalizedInput: `magnet:?xt=urn:btih:${trimmed}`,
+    };
+  }
+
+  // 3. Academic Torrents URL
+  if (lower.includes("academictorrents.com")) {
+    const match = trimmed.match(/\/details\/([0-9a-fA-F]{40})/i);
+    if (match) {
+      return {
+        valid: true,
+        detectedSource: "academic_torrent",
+        normalizedInput: `magnet:?xt=urn:btih:${match[1]}`,
+      };
+    }
+    return {
+      valid: true,
+      detectedSource: "academic_torrent",
+      normalizedInput: trimmed,
+    };
+  }
+
+  // 4. Direct .torrent URL
+  if (lower.endsWith(".torrent") || lower.includes(".torrent?")) {
+    if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+      return {
+        valid: false,
+        error: "Torrent URL must begin with https:// or http://.",
+      };
+    }
+    return {
+      valid: true,
+      detectedSource: "academic_torrent",
+      normalizedInput: trimmed,
+    };
+  }
+
+  // If user explicitly forced academic torrents but didn't supply a valid torrent format:
+  if (forcedBadge === "academic") {
+    return {
+      valid: false,
+      error: "Input is not a recognized magnet link, infohash, or .torrent URL.",
+    };
+  }
+
+  // 5. Hugging Face repository validation
+  const isDataset =
+    lower.includes("/datasets/") ||
+    lower.startsWith("datasets/") ||
+    (forcedBadge === "hf" && lower.startsWith("datasets/"));
+
+  let cleanId = trimmed;
+
+  if (lower.startsWith("https://huggingface.co/") || lower.startsWith("http://huggingface.co/")) {
+    cleanId = trimmed
+      .replace(/^https?:\/\/huggingface\.co\/(datasets\/)?/, "")
+      .split("/tree/")[0]
+      .split("/blob/")[0]
+      .split("/resolve/")[0]
+      .trim();
+  } else if (lower.startsWith("hf.co/")) {
+    cleanId = trimmed
+      .replace(/^hf\.co\/(datasets\/)?/, "")
+      .split("/tree/")[0]
+      .split("/blob/")[0]
+      .trim();
+  }
+
+  // Remove trailing slashes
+  cleanId = cleanId.replace(/\/+$/, "");
+
+  // Hugging Face model/dataset repos must follow [namespace]/[model_name]
+  const repoRegex = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+  if (!repoRegex.test(cleanId)) {
+    return {
+      valid: false,
+      error:
+        "Please enter a valid Hugging Face repository (e.g. 'org/model-name' or full URL) or a BitTorrent magnet link.",
+    };
+  }
+
+  return {
+    valid: true,
+    detectedSource: "huggingface",
+    normalizedInput: isDataset
+      ? `https://huggingface.co/datasets/${cleanId}`
+      : `https://huggingface.co/${cleanId}`,
+    isDataset,
+    repoId: cleanId,
+  };
+}
+
+
+================================================================
+// FILE: next.config.ts
+================================================================
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // Allow phone network connection to receive live HMR updates in development
+  allowedDevOrigins: ["10.34.117.48", "10.34.117.48:3000"],
+
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+
+
+================================================================
+// FILE: types/api.ts
+================================================================
+
+export interface ActiveStreamMeta {
+  speed: string;
+  progress: string;
+  eta: string;
+}
+
+export interface BackendTaskMeta {
+  id: string;
+  name: string;
+  type?: "huggingface" | "torrent";
+  status: string;
+  progress: number;
+  speed: string;
+  eta: string;
+}
+
+export interface BackendEngineStatus {
+  status: string;
+  name?: string;
+  progress?: string;
+  speed?: string;
+  peers?: number;
+  disk_free?: string;
+  upload_progress?: string;
+  upload_speed?: string;
+  upload_eta?: string;
+  active_tasks?: BackendTaskMeta[];
+  active_streams?: Record<string, ActiveStreamMeta>;
+  queue?: Array<{ id: string; name: string; size_gb: number; status: string }>;
+  allocated_torrent_gb?: number;
+  idle_seconds_left?: number;
+}
+
+export interface BackendHealthResponse {
+  status: "online" | "offline" | "standby";
+  cluster?: string;
+  active?: boolean;
+  engine?: string;
+  active_tasks?: number;
+  queued?: number;
+}
+
+export interface EnqueueResponse {
+  status: "success" | "ignored" | "error" | "queued";
+  message: string;
+}
+
+export interface WakeResponse {
+  status: "dispatched" | "failed";
+  message: string;
+  timestamp: string;
+}
+
+export interface EnqueueTaskRequest {
+  url: string;
+  detectionMode?: "auto" | "huggingface" | "academic_torrent";
+  pipelineMode?: "cloud_extract" | "local_fetch";
+  advancedOptions?: {
+    destinationFolder?: string;
+    maxBandwidth?: string;
+    priority?: string;
+  };
+}
+
+================================================================
+// FILE: types/telemetry.ts
+================================================================
+
+export type ActivityStatus =
+  | "preparing"
+  | "failed"
+  | "transferred"
+  | "downloaded"
+  | "completed";
+
+export interface RecentActivityItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  timestamp: string;
+  status: ActivityStatus;
+}
+
+export interface SpeedDataPoint {
+  time: string;
+  speed: number;
+}
+
+export interface MetricValue {
+  value: string | number;
+  trend: string;
+  isPositive: boolean;
+}
+
+export interface KpiMetrics {
+  activeTransfers: MetricValue;
+  completed: MetricValue;
+  dataExtracted: MetricValue;
+  avgSpeed: MetricValue;
+}
+
+export interface ActiveTaskItem {
+  id: string;
+  name: string;
+  source: string;
+  status: "downloading" | "transferring" | "completed" | "failed" | "queued" | "streaming";
+  progress: number;
+  speed: string;
+  eta: string;
+}
+
+export interface TelemetrySnapshot {
+  kpis: KpiMetrics;
+  tasks: ActiveTaskItem[];
+  transferSpeedMbps: number;
+  speedHistory: SpeedDataPoint[];
+  storage: {
+    usedBytes: number;
+    totalBytes: number;
+  };
+  isStale?: boolean;
+  hourlyTransfers?: Record<string, number>;
+}
+
+

@@ -14,27 +14,12 @@ import {
 } from "@/lib/api";
 import { EnqueueTaskRequest, BackendEngineStatus } from "@/types/api";
 import { db } from "@/lib/firebase";
-import {
-  doc,
-  onSnapshot,
-  updateDoc,
-  increment,
-  serverTimestamp,
-} from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
+import { getAuthHeaders } from "@/lib/clientAuth";
+import { formatBytes } from "@/lib/utils";
 
 const MAX_HISTORY_POINTS = 20;
 
-function formatBytes(bytes: number, decimals: number = 1): string {
-  if (!bytes || bytes <= 0 || isNaN(bytes)) return "0 B";
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["B", "KB", "MB", "GB", "TB", "PB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const safeIndex = Math.min(Math.max(i, 0), sizes.length - 1);
-  return `${parseFloat((bytes / Math.pow(k, safeIndex)).toFixed(dm))} ${sizes[safeIndex]}`;
-}
-
-// Uses the browser's true local date (e.g. 2026-10-21) rather than UTC
 function getLocalDateString(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -44,9 +29,9 @@ function getLocalDateString(): string {
 }
 
 function parseBytesFromTaskName(name: string): number {
-  if (!name) return 500 * 1024 * 1024;
+  if (!name) return 0;
   const match = name.match(/(\d+(?:\.\d+)?)\s*(gb|gib|mb|mib|kb|kib)/i);
-  if (!match) return 500 * 1024 * 1024;
+  if (!match) return 0;
 
   const val = parseFloat(match[1]);
   const unit = match[2].toLowerCase();
@@ -54,7 +39,7 @@ function parseBytesFromTaskName(name: string): number {
   if (unit.startsWith("g")) return Math.round(val * 1024 * 1024 * 1024);
   if (unit.startsWith("m")) return Math.round(val * 1024 * 1024);
   if (unit.startsWith("k")) return Math.round(val * 1024);
-  return 500 * 1024 * 1024;
+  return 0;
 }
 
 const createInitialSpeedHistory = (): SpeedDataPoint[] => {
@@ -65,10 +50,10 @@ const createInitialSpeedHistory = (): SpeedDataPoint[] => {
 };
 
 const initialKpis: KpiMetrics = {
-  activeTransfers: { value: 0, trend: "idle", isPositive: true },
-  completed: { value: 137, trend: "+14 this week", isPositive: true },
-  dataExtracted: { value: "115.8 GB", trend: "+syncing", isPositive: true },
-  avgSpeed: { value: "0.00 MB/s", trend: "0.00 MB/s", isPositive: true },
+  activeTransfers: { value: 0, trend: "idle", isPositive: false },
+  completed: { value: 0, trend: "0 this week", isPositive: true },
+  dataExtracted: { value: "0 B", trend: "+0 B today", isPositive: true },
+  avgSpeed: { value: "0.00 MB/s", trend: "0.00 MB/s", isPositive: false },
 };
 
 const initialSnapshot: TelemetrySnapshot = {
@@ -77,9 +62,10 @@ const initialSnapshot: TelemetrySnapshot = {
   transferSpeedMbps: 0,
   speedHistory: createInitialSpeedHistory(),
   storage: {
-    usedBytes: 114.1 * 1024 * 1024 * 1024,
+    usedBytes: 0,
     totalBytes: 5 * 1024 * 1024 * 1024 * 1024,
   },
+  isStale: false,
 };
 
 export function parseSpeedStringToMbps(speedStr: string | undefined): number {
@@ -119,60 +105,64 @@ export function parseSpeedStringToMbps(speedStr: string | undefined): number {
 export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
   const [snapshot, setSnapshot] = useState<TelemetrySnapshot>(initialSnapshot);
   const [firestoreBytes24h, setFirestoreBytes24h] = useState<number>(0);
-  const [firestoreTotalBytes, setFirestoreTotalBytes] = useState<number>(124322312192);
+  const [firestoreTotalBytes, setFirestoreTotalBytes] = useState<number>(0);
   const [firestoreBytesToday, setFirestoreBytesToday] = useState<number>(0);
+  const [hourlyTransfers, setHourlyTransfers] = useState<Record<string, number>>({});
 
   const speedHistoryRef = useRef<SpeedDataPoint[]>(createInitialSpeedHistory());
   const completedFiredRef = useRef<boolean>(false);
   const isPollingRef = useRef<boolean>(false);
   const activeTasksCountRef = useRef<number>(0);
   const lastActiveTaskRef = useRef<ActiveTaskItem | null>(null);
-  const firestoreDocDataRef = useRef<any>(null);
 
-  // 1. Commit Task Completion directly to Firestore
+  // 1. Commit Task Completion via Server API (Strict idempotency & validation)
   const commitTaskCompletionToFirestore = async (task: ActiveTaskItem | null) => {
     try {
-      const taskBytes = task ? parseBytesFromTaskName(task.name) : 500 * 1024 * 1024;
-      const todayStr = getLocalDateString();
-      const currentHour = new Date().getHours().toString().padStart(2, "0");
-      const docRef = doc(db, "analytics", "dashboard");
+      const taskId = task?.id || `task_${Date.now()}`;
+      const taskBytes = task ? parseBytesFromTaskName(task.name) : 0;
+      const headers = await getAuthHeaders();
 
-      const existingData = firestoreDocDataRef.current || {};
-      const isSameDay = existingData.date === todayStr;
-
-      await updateDoc(docRef, {
-        completed_count: increment(1),
-        completed_this_week: increment(1),
-        total_bytes_extracted: increment(taskBytes),
-        bytes_today: isSameDay ? increment(taskBytes) : taskBytes,
-        date: todayStr,
-        [`hourly_transfers.${currentHour}`]: increment(taskBytes),
-        last_updated: serverTimestamp(),
+      const res = await fetch("/api/metrics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify({
+          taskId,
+          bytes: taskBytes,
+          name: task?.name || "Completed Stream",
+          source: task?.source || "huggingface",
+        }),
       });
-      console.log(`[Frontend] Successfully saved extraction (+${formatBytes(taskBytes)}) to Firestore.`);
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn("[Metrics Sync] Failed to record completion:", errJson);
+      } else {
+        console.log(`[Metrics Sync] Task completion recorded via authenticated API: ${taskId}`);
+      }
     } catch (err) {
-      console.warn("[Frontend] Failed to write metrics to Firestore:", err);
+      console.warn("[Metrics Sync] Error calling /api/metrics:", err);
     }
   };
 
-  // 2. Real-time listener for Firestore document
+  // 2. Real-time listener for Firestore analytics document
   useEffect(() => {
     const unsub = onSnapshot(
       doc(db, "analytics", "dashboard"),
       (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          firestoreDocDataRef.current = data;
-
           const todayStr = getLocalDateString();
           const isSameDay = data.date === todayStr;
 
-          const completedCount = Number(data.completed_count) || 137;
-          const completedWeek = Number(data.completed_this_week) || 14;
-          const totalBytes = Number(data.total_bytes_extracted) || 124322312192;
+          const completedCount = Number(data.completed_count) || 0;
+          const completedWeek = Number(data.completed_this_week) || 0;
+          const totalBytes = Number(data.total_bytes_extracted) || 0;
           const todayBytes = isSameDay ? Number(data.bytes_today) || 0 : 0;
 
-          const hourly = data.hourly_transfers || {};
+          const hourly: Record<string, number> = data.hourly_transfers || {};
           const total24h = Object.values(hourly).reduce(
             (sum: number, val: any) => sum + (Number(val) || 0),
             0
@@ -181,9 +171,11 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
           setFirestoreTotalBytes(totalBytes);
           setFirestoreBytes24h(total24h);
           setFirestoreBytesToday(todayBytes);
+          setHourlyTransfers(hourly);
 
           setSnapshot((prev) => ({
             ...prev,
+            hourlyTransfers: hourly,
             kpis: {
               ...prev.kpis,
               completed: {
@@ -220,7 +212,7 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
       });
 
       if (!isOnline) {
-        activeTasksCountRef.current = 0;
+        // When offline, preserve previous task list but label as stale
         const updatedHistory = [
           ...speedHistoryRef.current.slice(1),
           { time: nowTimeStr, speed: 0 },
@@ -229,12 +221,11 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
 
         setSnapshot((prev) => ({
           ...prev,
-          tasks: [],
+          isStale: true,
           transferSpeedMbps: 0,
           speedHistory: updatedHistory,
           kpis: {
             ...prev.kpis,
-            activeTransfers: { value: 0, trend: "idle", isPositive: false },
             avgSpeed: { value: "0.00 MB/s", trend: "offline", isPositive: false },
           },
         }));
@@ -243,7 +234,11 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
       }
 
       const data: BackendEngineStatus | null = await fetchBackendStatus();
-      if (!data) return;
+      if (!data) {
+        // Backend temporarily unreachable; preserve state and set stale flag
+        setSnapshot((prev) => ({ ...prev, isStale: true }));
+        return;
+      }
 
       const statusStr = (data.status || "").toLowerCase();
       const isFinished =
@@ -276,6 +271,24 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
             eta: t.eta || "-",
           });
         });
+      } else if (
+        data.name &&
+        (statusStr === "downloading" || statusStr === "transferring" || statusStr === "streaming")
+      ) {
+        // Support single-task root response formats
+        const rootProgress = parseFloat(data.progress || "0") || 0;
+        const rootSpeed = parseSpeedStringToMbps(data.speed || data.upload_speed);
+        if (rootSpeed > maxTaskSpeedMb) maxTaskSpeedMb = rootSpeed;
+
+        tasks.push({
+          id: "active-stream",
+          name: data.name,
+          source: data.name.toLowerCase().includes("hf") ? "HuggingFace" : "Torrent",
+          status: statusStr === "transferring" ? "transferring" : "downloading",
+          progress: rootProgress,
+          speed: data.speed || data.upload_speed || "0.00 MB/s",
+          eta: data.upload_eta || "-",
+        });
       }
 
       if (tasks.length > 0) {
@@ -302,6 +315,7 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
 
       setSnapshot((prev) => ({
         ...prev,
+        isStale: false,
         tasks,
         transferSpeedMbps: Number(activeSpeedValue.toFixed(2)),
         speedHistory: nextHistory,
@@ -324,20 +338,35 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
     }
   }, [isOnline, onJobCompleted]);
 
-  // 4. Adaptive Polling Loop
+  // 4. Adaptive Polling Loop (Pauses/throttles when tab is backgrounded)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let isMounted = true;
 
     const scheduleNextPoll = () => {
+      const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
       const hasWork = activeTasksCountRef.current > 0;
-      const delay = !isOnline ? 8000 : hasWork ? 1000 : 3500;
+
+      // Adaptive interval: 1s while active, 3.5s while idle, 10s while offline, 15s while tab is hidden
+      const delay = isHidden ? 15000 : !isOnline ? 10000 : hasWork ? 1000 : 3500;
 
       timeoutId = setTimeout(async () => {
-        await pollTelemetry();
-        if (isMounted) scheduleNextPoll();
+        if (isMounted) {
+          await pollTelemetry();
+          if (isMounted) scheduleNextPoll();
+        }
       }, delay);
     };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        pollTelemetry();
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
 
     pollTelemetry().then(() => {
       if (isMounted) scheduleNextPoll();
@@ -346,6 +375,9 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
     return () => {
       isMounted = false;
       clearTimeout(timeoutId);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
     };
   }, [isOnline, pollTelemetry]);
 
@@ -374,6 +406,7 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
     firestoreBytes24h,
     firestoreTotalBytes,
     firestoreBytesToday,
+    hourlyTransfers,
     triggerExtraction,
     pauseTask,
     resumeTask,

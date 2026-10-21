@@ -1,24 +1,24 @@
+import { getServerEnv } from "@/lib/env";
+
 export async function triggerCodespaceWorkflow(): Promise<{ success: boolean; message: string }> {
-  const token =
-    process.env.GITHUB_DISPATCH_TOKEN ||
-    process.env.GH_TOKEN ||
-    process.env.GITHUB_TOKEN;
-  const owner = process.env.GITHUB_REPO_OWNER || "tej-mega-third";
-  const repo = process.env.GITHUB_REPO_NAME || "cloud-extracter";
+  const env = getServerEnv();
+  const token = env.GITHUB_DISPATCH_TOKEN;
+  const owner = env.GITHUB_REPO_OWNER;
+  const repo = env.GITHUB_REPO_NAME;
 
   if (!token) {
     return {
       success: false,
-      message: "Server configuration missing: GITHUB_DISPATCH_TOKEN is not defined in .env.local",
+      message: "Server configuration missing: GITHUB_DISPATCH_TOKEN is not defined in environment.",
     };
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
+  try {
     const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/dispatches`,
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/dispatches`,
       {
         method: "POST",
         headers: {
@@ -33,8 +33,6 @@ export async function triggerCodespaceWorkflow(): Promise<{ success: boolean; me
         signal: controller.signal,
       }
     );
-
-    clearTimeout(timeoutId);
 
     // GitHub returns 204 No Content on a successful dispatch
     if (response.status === 204 || response.ok) {
@@ -52,7 +50,9 @@ export async function triggerCodespaceWorkflow(): Promise<{ success: boolean; me
   } catch (error: any) {
     return {
       success: false,
-      message: error.name === "AbortError" ? "GitHub API request timed out" : error.message || "Network anomaly reaching GitHub API",
+      message: error.name === "AbortError" ? "GitHub API request timed out" : "Network anomaly reaching GitHub API",
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

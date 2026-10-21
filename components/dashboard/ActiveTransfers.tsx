@@ -1,16 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   FileText,
   Pause,
-  Play,
   X,
   HardDrive,
   DownloadCloud,
   CheckCircle2,
   Clock,
   Zap,
+  Info,
+  AlertTriangle,
 } from "lucide-react";
 import { ActiveTaskItem } from "@/types/telemetry";
 import { cn } from "@/lib/utils";
@@ -24,10 +25,21 @@ interface ActiveTransfersProps {
 
 export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
   tasks = [],
-  onPause,
-  onResume,
   onCancel,
 }) => {
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+
+  const handleConfirmCancel = async (taskId: string) => {
+    setCancellingId(taskId);
+    setConfirmCancelId(null);
+    try {
+      await onCancel(taskId);
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-4">
       {/* Header */}
@@ -45,11 +57,11 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
           {tasks.length > 0 ? (
             <span className="flex items-center gap-1.5 text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-              <span className="hidden sm:inline">Real-time streaming pipeline</span>
+              <span className="hidden sm:inline">Real-time cloud pipeline</span>
               <span className="sm:hidden font-medium">Live Stream</span>
             </span>
           ) : (
-            <span className="text-slate-500">Idle</span>
+            <span className="text-slate-500 font-mono text-[11px]">Worker Idle</span>
           )}
         </div>
       </div>
@@ -70,9 +82,13 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
         <div className="space-y-3">
           {tasks.map((task) => {
             const rawProgress = Number(task.progress || 0);
-            const safeProgress = isNaN(rawProgress) ? 0 : Math.min(Math.max(rawProgress, 0), 100);
+            const safeProgress = isNaN(rawProgress)
+              ? 0
+              : Math.min(Math.max(rawProgress, 0), 100);
             const isTransferring = task.status === "transferring";
             const isComplete = safeProgress >= 100;
+            const isCancelling = cancellingId === task.id;
+            const isConfirming = confirmCancelId === task.id;
 
             return (
               <div
@@ -95,20 +111,20 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                     >
                       {task.name}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-[10px] text-slate-400 font-mono">
                         {task.source || "Cloud Stream"}
                       </span>
                       <span className="text-[10px] text-slate-600">•</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Direct Pipe
+                      <span className="text-[10px] text-emerald-400/80 font-mono">
+                        Direct Stream to Google Drive
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Status, Speed & Action Controls Row */}
-                <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-[#151D2E]/80">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-2.5 border-t border-[#151D2E]/80">
                   {/* Status Badge */}
                   <div className="shrink-0">
                     <span
@@ -124,7 +140,7 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                       {isComplete ? (
                         <>
                           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span>Committed</span>
+                          <span>Committed to Drive</span>
                         </>
                       ) : isTransferring ? (
                         <>
@@ -141,7 +157,7 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                   </div>
 
                   {/* Speed, ETA & Controls */}
-                  <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+                  <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 ml-auto">
                     {/* Speed indicator */}
                     <div className="text-right font-mono leading-tight">
                       <div className="text-xs font-semibold text-slate-200">
@@ -155,33 +171,47 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
 
                     {/* Action Controls */}
                     <div className="flex items-center gap-1.5 pl-2.5 border-l border-[#1A263D]">
+                      {/* Disabled Pause Button with explicit disclaimer per roadmap */}
                       <button
                         type="button"
-                        onClick={() =>
-                          task.status === "downloading"
-                            ? onPause(task.id)
-                            : onResume(task.id)
-                        }
-                        title={task.status === "downloading" ? "Pause task" : "Resume task"}
-                        className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] hover:border-blue-500/50 hover:bg-[#111A30] flex items-center justify-center text-slate-300 hover:text-white transition-all active:scale-95 shadow-sm"
-                        aria-label={task.status === "downloading" ? "Pause task" : "Resume task"}
+                        disabled
+                        title="Pause/resume is unsupported by the current worker engine"
+                        className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] flex items-center justify-center text-slate-600 cursor-not-allowed opacity-50"
+                        aria-label="Pause (unsupported)"
                       >
-                        {task.status === "downloading" ? (
-                          <Pause className="w-3.5 h-3.5 fill-current" />
-                        ) : (
-                          <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                        )}
+                        <Pause className="w-3 h-3 fill-current" />
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onCancel(task.id)}
-                        title="Cancel task"
-                        className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] hover:border-rose-500/50 hover:bg-rose-500/15 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all active:scale-95 shadow-sm"
-                        aria-label="Cancel task"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Cancel Button with Confirmation Prompt */}
+                      {isConfirming ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmCancel(task.id)}
+                            className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-semibold hover:bg-rose-500 transition-colors"
+                          >
+                            Confirm Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmCancelId(null)}
+                            className="px-1.5 py-1 rounded bg-[#1A263D] text-slate-300 text-[10px] hover:text-white"
+                          >
+                            Back
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmCancelId(task.id)}
+                          disabled={isCancelling}
+                          title="Cancel task"
+                          className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] hover:border-rose-500/50 hover:bg-rose-500/15 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                          aria-label="Cancel task"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -189,7 +219,7 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                 {/* Progress bar row */}
                 <div className="space-y-1 pt-0.5">
                   <div className="flex items-center justify-between text-[11px] font-mono">
-                    <span className="text-slate-400">Progress</span>
+                    <span className="text-slate-400">Stream Progress</span>
                     <span className="text-blue-400 font-semibold">
                       {safeProgress.toFixed(1)}%
                     </span>

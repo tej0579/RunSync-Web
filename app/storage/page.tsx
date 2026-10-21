@@ -23,6 +23,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/utils";
+import { getAuthHeaders, getAuthToken } from "@/lib/clientAuth";
 
 interface DriveItem {
   id: string;
@@ -104,11 +105,13 @@ function DriveRow({
   depth = 0,
   expandedFolders,
   onToggleFolder,
+  onDownload,
 }: {
   item: DriveItem;
   depth?: number;
   expandedFolders: Record<string, boolean>;
   onToggleFolder: (item: DriveItem) => void;
+  onDownload: (item: DriveItem) => void;
 }) {
   const isExpanded = !!expandedFolders[item.id];
   const paddingLeftPx = 12 + depth * 18;
@@ -169,23 +172,21 @@ function DriveRow({
         <td className="py-2.5 px-3 text-right whitespace-nowrap">
           <div className="flex items-center justify-end gap-1">
             {!item.isFolder && (
-              <a
-                href={`/api/drive/download?fileId=${item.id}&name=${encodeURIComponent(
-                  item.name
-                )}`}
-                download={item.name}
+              <button
+                type="button"
+                onClick={() => onDownload(item)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#18233C] transition-all inline-flex items-center"
                 title="Direct download file"
               >
                 <DownloadCloud className="w-3.5 h-3.5" />
-              </a>
+              </button>
             )}
 
             {item.webViewLink && (
               <a
                 href={item.webViewLink}
                 target="_blank"
-                rel="noreferrer"
+                rel="noreferrer noopener"
                 className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-[#18233C] transition-all inline-flex items-center"
                 title={
                   item.isFolder
@@ -233,6 +234,7 @@ function DriveRow({
                 depth={depth + 1}
                 expandedFolders={expandedFolders}
                 onToggleFolder={onToggleFolder}
+                onDownload={onDownload}
               />
             ))
           )}
@@ -267,10 +269,10 @@ export default function StoragePage() {
             day: "numeric",
           })
         : "Unknown",
-      mimeType: f.mimeType,
+      mimeType: f.mimeType || "application/octet-stream",
       webViewLink: f.webViewLink,
       downloadUrl: f.downloadUrl,
-      isFolder: f.isFolder,
+      isFolder: !!f.isFolder,
       children: [],
       isLoadingChildren: false,
     }));
@@ -279,9 +281,13 @@ export default function StoragePage() {
   const fetchLiveDriveFiles = useCallback(async () => {
     try {
       setErrorMsg(null);
+      const headers = await getAuthHeaders();
       const response = await fetch(
         `/api/drive?folderId=${encodeURIComponent(GDRIVE_FOLDER_ID)}`,
-        { cache: "no-store" }
+        {
+          cache: "no-store",
+          headers,
+        }
       );
 
       if (!response.ok) {
@@ -325,6 +331,7 @@ export default function StoragePage() {
     setIsSearching(true);
     const delayTimer = setTimeout(async () => {
       try {
+        const headers = await getAuthHeaders();
         const res = await fetch(
           `/api/drive?search=${encodeURIComponent(trimmed)}&folderId=${encodeURIComponent(
             GDRIVE_FOLDER_ID
@@ -332,6 +339,7 @@ export default function StoragePage() {
           {
             cache: "no-store",
             signal: controller.signal,
+            headers,
           }
         );
         if (!res.ok) throw new Error("Search failed");
@@ -369,6 +377,23 @@ export default function StoragePage() {
     setSearchTerm("");
     setSearchResults(null);
     setIsSearching(false);
+  };
+
+  const handleDownload = async (item: DriveItem) => {
+    try {
+      const token = await getAuthToken();
+      const url = `/api/drive/download?fileId=${encodeURIComponent(item.id)}&name=${encodeURIComponent(
+        item.name
+      )}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = item.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Download failed:", err);
+    }
   };
 
   const updateTreeWithChildren = (
@@ -427,8 +452,10 @@ export default function StoragePage() {
       updateList((prev) => setTreeLoading(prev, item.id, true));
 
       try {
-        const res = await fetch(`/api/drive?folderId=${item.id}`, {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/drive?folderId=${encodeURIComponent(item.id)}`, {
           cache: "no-store",
+          headers,
         });
         const subData = await res.json();
         const parsedChildren = parseItems(subData.files || []);
@@ -489,7 +516,8 @@ export default function StoragePage() {
                 GDRIVE_FOLDER_ID
                   ? `https://drive.google.com/drive/folders/${GDRIVE_FOLDER_ID}`
                   : "https://drive.google.com",
-                "_blank"
+                "_blank",
+                "noopener,noreferrer"
               )
             }
             className="flex items-center gap-1.5 h-8 text-xs"
@@ -516,7 +544,7 @@ export default function StoragePage() {
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="text-[11px] sm:text-xs text-slate-400 font-medium">
-              Total Allocation Used
+              Destination Folder Storage
             </div>
             <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans mt-0.5">
               {formatBytes(totalDriveBytes)}{" "}
@@ -594,12 +622,12 @@ export default function StoragePage() {
           </span>
         </div>
 
-        {/* Dynamic Table with Horizontal Scroll container */}
-        <div className="rounded-xl border border-[#1A263D] overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-xl border border-[#1A263D] overflow-x-auto">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
               <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-              <span className="text-xs font-mono">Querying Drive API...</span>
+              <span className="text-xs font-mono">Querying Google Drive API...</span>
             </div>
           ) : displayedFiles.length === 0 ? (
             <div className="py-10 text-center text-slate-500 text-xs">
@@ -625,10 +653,82 @@ export default function StoragePage() {
                     depth={0}
                     expandedFolders={expandedFolders}
                     onToggleFolder={handleToggleFolder}
+                    onDownload={handleDownload}
                   />
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+
+        {/* Mobile Responsive Cards View */}
+        <div className="md:hidden space-y-2">
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <span className="text-xs font-mono">Querying Drive API...</span>
+            </div>
+          ) : displayedFiles.length === 0 ? (
+            <div className="py-10 text-center text-slate-500 text-xs rounded-xl bg-[#070B14] border border-[#1A263D]">
+              {isSearchActive
+                ? `No files or folders matched "${searchTerm}".`
+                : "No files found in destination folder."}
+            </div>
+          ) : (
+            displayedFiles.map((file) => (
+              <div
+                key={file.id}
+                className="p-3 rounded-xl bg-[#070B14] border border-[#1A263D] space-y-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {file.isFolder ? (
+                      <Folder className="w-4 h-4 text-blue-400 shrink-0" />
+                    ) : (
+                      getFileIcon(file.name, file.mimeType)
+                    )}
+                    <span
+                      onClick={() => file.isFolder && handleToggleFolder(file)}
+                      className={`text-xs font-medium text-slate-200 truncate ${
+                        file.isFolder ? "cursor-pointer hover:text-blue-300" : ""
+                      }`}
+                      title={file.name}
+                    >
+                      {file.name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!file.isFolder && (
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(file)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#18233C] transition-all"
+                        title="Download file"
+                      >
+                        <DownloadCloud className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {file.webViewLink && (
+                      <a
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-[#18233C] transition-all"
+                        title="Open in Drive"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-[#151D2E]/60">
+                  <span>Size: {file.sizeFormatted}</span>
+                  <span>Modified: {file.modifiedFormatted}</span>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
