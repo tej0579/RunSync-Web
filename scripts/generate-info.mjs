@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const targetDirs = ["app", "components", "hooks", "lib", "types"];
-const individualFiles = ["next.config.ts"];
+const individualFiles = ["next.config.ts", "firestore.rules"];
 const codeFiles = [];
 
 function scanDir(dir) {
@@ -27,15 +27,17 @@ for (const f of individualFiles) {
 
 codeFiles.sort();
 
-let output = "// RunSync 2.0 - Complete Application Code Export\n";
+let output = "// ================================================================\n";
+output += "// RunSync 2.0 - Complete Production-Hardened Application Code Export\n";
 output += `// Generated: ${new Date().toISOString()}\n`;
-output += `// Total source files: ${codeFiles.length}\n\n`;
+output += `// Total files included: ${codeFiles.length}\n`;
+output += "// ================================================================\n\n";
 
 for (const file of codeFiles) {
   const normPath = file.replace(/\\/g, "/");
-  output += "================================================================\n";
+  output += "//////////////////////////////////////////////////////////////////\n";
   output += `// FILE: ${normPath}\n`;
-  output += "================================================================\n\n";
+  output += "//////////////////////////////////////////////////////////////////\n\n";
   output += fs.readFileSync(file, "utf8");
   output += "\n\n";
 }
