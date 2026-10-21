@@ -83,7 +83,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   };
 
   return (
-    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+    <div className="p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm md:text-base font-semibold text-slate-100 tracking-tight">

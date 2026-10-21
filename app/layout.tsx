@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark h-full">
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-[#080C14] text-slate-100 antialiased h-[100dvh] max-h-[100dvh] flex flex-col md:flex-row overflow-hidden`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-[#060911] text-slate-100 antialiased h-[100dvh] max-h-[100dvh] flex flex-col md:flex-row overflow-hidden selection:bg-indigo-500/30 selection:text-white`}
       >
         <AuthGate>
           {/* Navigation: Responsive Topbar + Slide Drawer on Mobile, Fixed Sidebar on Desktop */}

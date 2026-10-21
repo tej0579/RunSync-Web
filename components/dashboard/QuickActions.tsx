@@ -111,13 +111,13 @@ export const QuickActions: React.FC = () => {
   ];
 
   return (
-    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+    <div className="p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm md:text-base font-semibold text-slate-100 tracking-tight">
           Quick Actions
         </h2>
-        <span className="text-xs text-slate-500 font-mono">RunSync Tools</span>
+        <span className="text-xs text-slate-400 font-mono">RunSync Tools</span>
       </div>
 
       {/* 2x3 Grid */}
@@ -129,8 +129,8 @@ export const QuickActions: React.FC = () => {
               key={act.id}
               onClick={act.onClick}
               className={cn(
-                "flex items-center gap-2.5 p-3 rounded-xl bg-[#070B14] hover:bg-[#121B30]",
-                "border border-[#1A263D] hover:border-blue-500/40 text-slate-300 hover:text-white",
+                "flex items-center gap-2.5 p-3 rounded-xl bg-[#070b14] hover:bg-[#111728]",
+                "border border-white/[0.06] hover:border-indigo-500/30 text-slate-300 hover:text-white",
                 "transition-all text-xs font-medium cursor-pointer shadow-sm active:scale-[0.98] text-left"
               )}
             >

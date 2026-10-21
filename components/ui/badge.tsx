@@ -9,7 +9,8 @@ export type BadgeVariant =
   | "failed"
   | "paused"
   | "default"
-  | "outline";
+  | "outline"
+  | "cyan";
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
@@ -27,19 +28,21 @@ export const Badge: React.FC<BadgeProps> = ({
   const getBadgeStyle = () => {
     switch (variant) {
       case "downloading":
-        return "bg-purple-950/70 text-purple-300 border border-purple-700/60 shadow-[0_0_12px_-3px_rgba(168,85,247,0.3)]";
+        return "bg-purple-500/10 text-purple-300 border border-purple-500/30 shadow-[0_0_12px_-3px_rgba(168,85,247,0.25)]";
       case "transferring":
-        return "bg-emerald-950/70 text-emerald-300 border border-emerald-700/60 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]";
+        return "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_-3px_rgba(16,185,129,0.25)]";
       case "completed":
-        return "bg-emerald-950/50 text-emerald-400 border border-emerald-800/40";
+        return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
       case "failed":
-        return "bg-rose-950/70 text-rose-400 border border-rose-800/60";
+        return "bg-rose-500/10 text-rose-300 border border-rose-500/30";
       case "paused":
-        return "bg-amber-950/70 text-amber-300 border border-amber-800/60";
+        return "bg-amber-500/10 text-amber-300 border border-amber-500/30";
+      case "cyan":
+        return "bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[0_0_12px_-3px_rgba(6,182,212,0.25)]";
       case "outline":
-        return "bg-[#070B14] text-slate-300 border border-[#1A263D]";
+        return "bg-[#080c16] text-slate-300 border border-white/[0.08]";
       default:
-        return "bg-[#0D1424] text-slate-200 border border-[#1A263D]";
+        return "bg-[#0c111e] text-slate-300 border border-white/[0.08]";
     }
   };
 
@@ -65,7 +68,7 @@ export const Badge: React.FC<BadgeProps> = ({
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors font-mono",
+        "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors font-mono tracking-tight",
         getBadgeStyle(),
         className
       )}

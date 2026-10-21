@@ -9,6 +9,8 @@ import {
   Globe,
   Loader2,
   AlertCircle,
+  HelpCircle,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { validateExtractionInput } from "@/lib/validation";
@@ -33,6 +35,13 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
   const [source, setSource] = useState<SourceBadge>("auto");
   const [mode, setMode] = useState<ExecutionMode>("cloud");
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Quick preset helper
+  const handleQuickPreset = (presetUrl: string, badge: SourceBadge) => {
+    setUrl(presetUrl);
+    setSource(badge);
+    setValidationError(null);
+  };
 
   // Listen for QuickActions clipboard/preset injection
   useEffect(() => {
@@ -89,39 +98,48 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-3.5 sm:space-y-4">
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-3.5">
+      {/* Title & Status */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-400">New Extraction</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-200 tracking-wide">
+            Extraction Composer
+          </span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] text-slate-400 border border-white/[0.06]">
+            Target & Swarm Input
+          </span>
+        </div>
+
         {isSubmitting && (
-          <div className="flex items-center gap-1.5 text-blue-400 text-[11px] sm:text-xs font-mono">
+          <div className="flex items-center gap-1.5 text-indigo-400 text-[11px] sm:text-xs font-mono">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span className="truncate">Dispatching to cloud...</span>
+            <span className="truncate">Arming pipeline...</span>
           </div>
         )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Main URL Input Bar */}
-        <div className="relative flex items-center">
-          <Link2 className="w-4 h-4 text-slate-500 absolute left-3 shrink-0" />
+        {/* Main Command Input Bar */}
+        <div className="relative flex items-center group">
+          <Link2 className="w-4 h-4 text-slate-500 absolute left-3.5 shrink-0 transition-colors group-focus-within:text-indigo-400" />
           <input
             type="text"
             value={url}
             onChange={handleInputChange}
             disabled={isSubmitting}
-            placeholder="Paste infohash, magnet, or Hugging Face repository link..."
-            className="w-full bg-[#070B14] border border-[#1A263D] focus:border-blue-500 rounded-xl pl-9 pr-24 sm:pr-28 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-60"
+            placeholder="Paste Hugging Face repo (e.g. org/model), dataset, or BitTorrent magnet link..."
+            className="w-full bg-[#070b14] border border-white/[0.08] focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/40 rounded-xl pl-10 pr-24 sm:pr-28 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-50"
           />
           <Button
             type="submit"
             size="sm"
             variant="primary"
             disabled={!url.trim() || isSubmitting}
-            className="absolute right-1.5 h-7 sm:h-8 px-2.5 sm:px-3.5 text-xs flex items-center gap-1 disabled:opacity-50"
+            className="absolute right-1.5 h-7 sm:h-8 px-3 text-xs flex items-center gap-1.5"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3 h-3 animate-spin" />
                 <span className="hidden sm:inline">Sending</span>
               </>
             ) : (
@@ -142,7 +160,7 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
         )}
 
         {/* Source Badges & Execution Mode Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
           {/* Scrollable Badges */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none no-scrollbar">
             <button
@@ -152,10 +170,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
                 setSource("auto");
                 setValidationError(null);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "auto"
-                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/40"
-                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+                  ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 font-semibold"
+                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
               }`}
             >
               <Sparkles className="w-3 h-3" />
@@ -169,10 +187,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
                 setSource("hf");
                 setValidationError(null);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "hf"
-                  ? "bg-amber-600/20 text-amber-400 border border-amber-500/40"
-                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold"
+                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
               }`}
             >
               <span>🤗 Hugging Face</span>
@@ -185,10 +203,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
                 setSource("academic");
                 setValidationError(null);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "academic"
-                  ? "bg-rose-600/20 text-rose-400 border border-rose-500/40"
-                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold"
+                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
               }`}
             >
               <span>🧲 Academic Torrents</span>
@@ -196,14 +214,14 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center self-start sm:self-auto bg-[#070B14] p-0.5 rounded-lg border border-[#1A263D] shrink-0">
+          <div className="flex items-center self-start sm:self-auto bg-[#070b14] p-1 rounded-xl border border-white/[0.06] shrink-0">
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => setMode("cloud")}
-              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-medium flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all ${
                 mode === "cloud"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -215,9 +233,9 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               type="button"
               disabled={isSubmitting}
               onClick={() => setMode("local")}
-              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-medium flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all ${
                 mode === "local"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -225,6 +243,34 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               <span>Local Fetch</span>
             </button>
           </div>
+        </div>
+
+        {/* Quick Example Presets (Discreet Helper Row) */}
+        <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-400 font-mono overflow-x-auto no-scrollbar">
+          <span className="shrink-0 text-slate-400">Presets:</span>
+          <button
+            type="button"
+            onClick={() => handleQuickPreset("https://huggingface.co/openai/gpt-oss-20b", "hf")}
+            className="hover:text-indigo-400 hover:underline shrink-0"
+          >
+            openai/gpt-oss-20b
+          </button>
+          <span className="text-slate-700">•</span>
+          <button
+            type="button"
+            onClick={() => handleQuickPreset("https://huggingface.co/datasets/allenai/c4", "hf")}
+            className="hover:text-indigo-400 hover:underline shrink-0"
+          >
+            allenai/c4
+          </button>
+          <span className="text-slate-700">•</span>
+          <button
+            type="button"
+            onClick={() => handleQuickPreset("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Ubuntu-24.04", "academic")}
+            className="hover:text-cyan-400 hover:underline shrink-0"
+          >
+            Academic Torrent Demo
+          </button>
         </div>
       </form>
     </div>

@@ -1,6 +1,6 @@
 // ================================================================
 // RunSync 2.0 - Complete Production-Hardened Application Code Export
-// Generated: 2026-10-21T11:33:57.153Z
+// Generated: 2026-10-21T12:21:49.618Z
 // Total files included: 40
 // ================================================================
 
@@ -858,7 +858,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark h-full">
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-[#080C14] text-slate-100 antialiased h-[100dvh] max-h-[100dvh] flex flex-col md:flex-row overflow-hidden`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-[#060911] text-slate-100 antialiased h-[100dvh] max-h-[100dvh] flex flex-col md:flex-row overflow-hidden selection:bg-indigo-500/30 selection:text-white`}
       >
         <AuthGate>
           {/* Navigation: Responsive Topbar + Slide Drawer on Mobile, Fixed Sidebar on Desktop */}
@@ -1181,15 +1181,15 @@ export default function DashboardPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0D1424] border border-[#1E2C48] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#0c111e]/95 backdrop-blur-md border border-white/[0.1] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
         >
           {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
           {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
-          {toast.type === "info" && <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />}
-          <span className="flex-1 leading-normal">{toast.message}</span>
+          {toast.type === "info" && <Loader2 className="w-4 h-4 text-indigo-400 animate-spin shrink-0" />}
+          <span className="flex-1 leading-normal font-medium">{toast.message}</span>
           <button
             onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-            className="text-slate-500 hover:text-slate-300 ml-1"
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.05] transition-colors ml-1"
             aria-label="Dismiss message"
           >
             <X className="w-3.5 h-3.5" />
@@ -1273,6 +1273,7 @@ import {
   Film,
   Database,
   Binary,
+  FolderTree,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -1373,8 +1374,8 @@ function DriveRow({
   return (
     <>
       <tr
-        className={`hover:bg-[#101726] transition-colors text-slate-200 border-b border-[#151D2E]/50 ${
-          depth > 0 ? "bg-[#080D18]" : ""
+        className={`hover:bg-white/[0.03] transition-colors text-slate-200 border-b border-white/[0.05] ${
+          depth > 0 ? "bg-[#060911]/50" : ""
         }`}
       >
         <td
@@ -1384,11 +1385,12 @@ function DriveRow({
           {item.isFolder ? (
             <button
               onClick={() => onToggleFolder(item)}
-              className="p-1 -ml-1 text-slate-400 hover:text-white rounded hover:bg-[#1C273C] transition-colors"
+              className="p-1 -ml-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors"
               title={isExpanded ? "Collapse folder" : "Expand folder"}
+              aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
             >
               {isExpanded ? (
-                <ChevronDown className="w-3.5 h-3.5 text-blue-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-indigo-400" />
               ) : (
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
               )}
@@ -1400,7 +1402,7 @@ function DriveRow({
           {item.isFolder ? (
             <Folder
               onClick={() => onToggleFolder(item)}
-              className="w-4 h-4 text-blue-400 shrink-0 cursor-pointer"
+              className="w-4 h-4 text-indigo-400 shrink-0 cursor-pointer"
             />
           ) : (
             getFileIcon(item.name, item.mimeType)
@@ -1409,7 +1411,7 @@ function DriveRow({
           <span
             onClick={() => item.isFolder && onToggleFolder(item)}
             className={`font-medium truncate text-xs ${
-              item.isFolder ? "cursor-pointer hover:text-blue-300" : ""
+              item.isFolder ? "cursor-pointer hover:text-indigo-300 font-semibold" : ""
             }`}
             title={item.name}
           >
@@ -1417,7 +1419,7 @@ function DriveRow({
           </span>
         </td>
 
-        <td className="py-2.5 px-3 font-mono text-slate-400 text-[11px] sm:text-xs whitespace-nowrap">
+        <td className="py-2.5 px-3 font-mono text-slate-400 text-[11px] sm:text-xs whitespace-nowrap tabular-nums">
           {item.sizeFormatted}
         </td>
         <td className="py-2.5 px-3 text-slate-400 text-[11px] sm:text-xs whitespace-nowrap">
@@ -1429,10 +1431,11 @@ function DriveRow({
               <button
                 type="button"
                 onClick={() => onDownload(item)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#18233C] transition-all inline-flex items-center"
-                title="Direct download file"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all inline-flex items-center"
+                title="Direct download file via authenticated proxy"
+                aria-label={`Download ${item.name}`}
               >
-                <DownloadCloud className="w-3.5 h-3.5" />
+                <DownloadCloud className="w-3.5 h-3.5 text-slate-300 hover:text-cyan-400" />
               </button>
             )}
 
@@ -1441,12 +1444,13 @@ function DriveRow({
                 href={item.webViewLink}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-[#18233C] transition-all inline-flex items-center"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-white/[0.08] transition-all inline-flex items-center"
                 title={
                   item.isFolder
                     ? "Open folder in Google Drive"
                     : "Preview on Google Drive"
                 }
+                aria-label={`Open ${item.name} in Google Drive`}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
@@ -1458,24 +1462,24 @@ function DriveRow({
       {isExpanded && (
         <>
           {item.isLoadingChildren ? (
-            <tr className="bg-[#090E1A]">
+            <tr className="bg-[#070b14]">
               <td
                 colSpan={4}
                 style={{ paddingLeft: `${paddingLeftPx + 24}px` }}
                 className="py-2.5 pr-3 text-slate-400"
               >
                 <div className="flex items-center gap-2 font-mono text-[10px]">
-                  <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
-                  <span>Loading contents...</span>
+                  <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                  <span>Loading directory contents...</span>
                 </div>
               </td>
             </tr>
           ) : !item.children || item.children.length === 0 ? (
-            <tr className="bg-[#090E1A]">
+            <tr className="bg-[#070b14]">
               <td
                 colSpan={4}
                 style={{ paddingLeft: `${paddingLeftPx + 24}px` }}
-                className="py-2 pr-3 text-slate-500 italic text-[10px]"
+                className="py-2 pr-3 text-slate-400 italic text-[10px]"
               >
                 (Empty folder)
               </td>
@@ -1734,15 +1738,20 @@ export default function StoragePage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 pb-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+      {/* Header with Breadcrumbs & Primary Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 select-none">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2 sm:gap-2.5">
-            <HardDrive className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-1">
+            <span className="text-indigo-400">RunSync Vault</span>
+            <span>/</span>
+            <span className="text-slate-300">RunSync-Storage</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <HardDrive className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
             <span>Google Drive Storage</span>
           </h1>
-          <p className="text-[11px] sm:text-xs md:text-sm text-slate-400 mt-0.5 sm:mt-1">
-            Browse and manage files streamed directly through Rclone.
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            Explore and download extracted models, weights, and dataset archives.
           </p>
         </div>
 
@@ -1756,7 +1765,7 @@ export default function StoragePage() {
           >
             <RefreshCw
               className={`w-3.5 h-3.5 text-slate-400 ${
-                isRefreshing ? "animate-spin text-blue-400" : ""
+                isRefreshing ? "animate-spin text-indigo-400" : ""
               }`}
             />
             <span>Refresh</span>
@@ -1784,7 +1793,7 @@ export default function StoragePage() {
 
       {/* Error Alert */}
       {errorMsg && (
-        <div className="p-3 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-3">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-3">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
           <div>
             <span className="font-semibold">Notice: </span>
@@ -1794,19 +1803,19 @@ export default function StoragePage() {
       )}
 
       {/* Quota Overview (5 TB) */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-3.5">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-[11px] sm:text-xs text-slate-400 font-medium">
-              Destination Folder Storage
+            <div className="text-[11px] sm:text-xs text-slate-400 font-medium font-mono">
+              Destination Vault Allocation
             </div>
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans mt-0.5">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans mt-0.5 tabular-nums">
               {formatBytes(totalDriveBytes)}{" "}
-              <span className="text-xs sm:text-sm text-slate-400 font-normal">/ 5 TB</span>
+              <span className="text-xs sm:text-sm text-slate-400 font-normal font-mono">/ 5 TB</span>
             </div>
           </div>
           <div>
-            <span className="text-[10px] sm:text-xs font-mono font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 whitespace-nowrap">
+            <span className="text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
               {usedPercentage}% Used
             </span>
           </div>
@@ -1814,26 +1823,26 @@ export default function StoragePage() {
 
         <Progress
           value={usedPercentage}
-          height="h-1.5 sm:h-2"
-          indicatorColor="bg-gradient-to-r from-sky-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+          height="h-2"
+          indicatorColor="bg-gradient-to-r from-cyan-400 to-indigo-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
         />
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 text-[10px] sm:text-xs border-t border-[#151D2E]/80">
-          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-[#070B14] border border-[#1A263D]">
-            <span className="text-slate-400 truncate block">Extracted</span>
-            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 text-[10px] sm:text-xs border-t border-white/[0.05]">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#070b14] border border-white/[0.05]">
+            <span className="text-slate-400 truncate block">Total Extracted</span>
+            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate tabular-nums">
               {formatBytes(totalDriveBytes)}
             </div>
           </div>
-          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-[#070B14] border border-[#1A263D]">
-            <span className="text-slate-400 truncate block">Folders</span>
-            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate">
-              {rootFiles.length} Item(s)
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#070b14] border border-white/[0.05]">
+            <span className="text-slate-400 truncate block">Directory Items</span>
+            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate tabular-nums">
+              {rootFiles.length} item(s)
             </div>
           </div>
-          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-[#070B14] border border-[#1A263D]">
-            <span className="text-slate-400 truncate block">Remaining</span>
-            <div className="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5 truncate">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#070b14] border border-white/[0.05]">
+            <span className="text-slate-400 truncate block">Free Pool</span>
+            <div className="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5 truncate tabular-nums">
               {formatBytes(remainingBytes)}
             </div>
           </div>
@@ -1841,13 +1850,13 @@ export default function StoragePage() {
       </div>
 
       {/* Drive File Browser & Search */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-3.5">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="relative flex-1 max-w-sm">
             {isSearching ? (
-              <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin absolute left-3 top-1/2 -translate-y-1/2" />
+              <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin absolute left-3 top-1/2 -translate-y-1/2" />
             ) : (
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             )}
             <input
               type="text"
@@ -1856,14 +1865,14 @@ export default function StoragePage() {
               onKeyDown={(e) => {
                 if (e.key === "Escape") handleClearSearch();
               }}
-              placeholder="Search across all files & folders..."
-              className="w-full bg-[#070B14] border border-[#1A263D] focus:border-blue-500 rounded-xl pl-9 pr-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all"
+              placeholder="Filter across vault files & subdirectories..."
+              className="w-full bg-[#070b14] border border-white/[0.08] focus:border-indigo-500/80 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-mono"
             />
             {searchTerm && (
               <button
                 onClick={handleClearSearch}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                title="Clear search"
+                title="Clear filter (Esc)"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1877,29 +1886,29 @@ export default function StoragePage() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block rounded-xl border border-[#1A263D] overflow-x-auto">
+        <div className="hidden md:block rounded-xl border border-white/[0.08] overflow-hidden bg-[#070b14]/50">
           {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
-              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-              <span className="text-xs font-mono">Querying Google Drive API...</span>
+            <div className="py-14 flex flex-col items-center justify-center text-slate-400 space-y-2.5">
+              <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+              <span className="text-xs font-mono">Loading Drive inventory...</span>
             </div>
           ) : displayedFiles.length === 0 ? (
-            <div className="py-10 text-center text-slate-500 text-xs">
+            <div className="py-12 text-center text-slate-400 text-xs">
               {isSearchActive
                 ? `No files or folders matched "${searchTerm}".`
                 : "No files found in destination folder."}
             </div>
           ) : (
             <table className="w-full text-left text-xs min-w-[520px]">
-              <thead className="bg-[#070B14] text-slate-400 border-b border-[#1A263D] font-mono text-[10px] sm:text-[11px]">
+              <thead className="bg-[#070b14] text-slate-400 border-b border-white/[0.08] font-mono text-[10px] sm:text-[11px]">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">Name</th>
-                  <th className="py-2.5 px-3 font-medium">Size</th>
-                  <th className="py-2.5 px-3 font-medium">Last Modified</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Actions</th>
+                  <th className="py-2.5 px-3 font-semibold">Name</th>
+                  <th className="py-2.5 px-3 font-semibold">Size</th>
+                  <th className="py-2.5 px-3 font-semibold">Last Modified</th>
+                  <th className="py-2.5 px-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#151D2E]">
+              <tbody className="divide-y divide-white/[0.04]">
                 {displayedFiles.map((file) => (
                   <DriveRow
                     key={file.id}
@@ -1915,36 +1924,36 @@ export default function StoragePage() {
           )}
         </div>
 
-        {/* Mobile Responsive Cards View */}
+        {/* Mobile Responsive Touch Cards */}
         <div className="md:hidden space-y-2">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
-              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-              <span className="text-xs font-mono">Querying Drive API...</span>
+              <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+              <span className="text-xs font-mono">Loading inventory...</span>
             </div>
           ) : displayedFiles.length === 0 ? (
-            <div className="py-10 text-center text-slate-500 text-xs rounded-xl bg-[#070B14] border border-[#1A263D]">
+            <div className="py-10 text-center text-slate-400 text-xs rounded-xl bg-[#070b14] border border-white/[0.06]">
               {isSearchActive
-                ? `No files or folders matched "${searchTerm}".`
+                ? `No files matched "${searchTerm}".`
                 : "No files found in destination folder."}
             </div>
           ) : (
             displayedFiles.map((file) => (
               <div
                 key={file.id}
-                className="p-3 rounded-xl bg-[#070B14] border border-[#1A263D] space-y-2"
+                className="p-3 rounded-xl bg-[#070b14] border border-white/[0.07] space-y-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     {file.isFolder ? (
-                      <Folder className="w-4 h-4 text-blue-400 shrink-0" />
+                      <Folder className="w-4 h-4 text-indigo-400 shrink-0" />
                     ) : (
                       getFileIcon(file.name, file.mimeType)
                     )}
                     <span
                       onClick={() => file.isFolder && handleToggleFolder(file)}
                       className={`text-xs font-medium text-slate-200 truncate ${
-                        file.isFolder ? "cursor-pointer hover:text-blue-300" : ""
+                        file.isFolder ? "cursor-pointer hover:text-indigo-300 font-semibold" : ""
                       }`}
                       title={file.name}
                     >
@@ -1957,10 +1966,11 @@ export default function StoragePage() {
                       <button
                         type="button"
                         onClick={() => handleDownload(file)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#18233C] transition-all"
+                        className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/[0.08] transition-all"
                         title="Download file"
+                        aria-label={`Download ${file.name}`}
                       >
-                        <DownloadCloud className="w-3.5 h-3.5" />
+                        <DownloadCloud className="w-4 h-4 text-cyan-400" />
                       </button>
                     )}
                     {file.webViewLink && (
@@ -1968,16 +1978,17 @@ export default function StoragePage() {
                         href={file.webViewLink}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-[#18233C] transition-all"
+                        className="p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-white/[0.08] transition-all"
                         title="Open in Drive"
+                        aria-label={`Open ${file.name} in Drive`}
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-[#151D2E]/60">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1.5 border-t border-white/[0.05]">
                   <span>Size: {file.sizeFormatted}</span>
                   <span>Modified: {file.modifiedFormatted}</span>
                 </div>
@@ -2007,8 +2018,8 @@ import {
   CheckCircle2,
   Clock,
   Zap,
-  Info,
-  AlertTriangle,
+  Radio,
+  Layers,
 } from "lucide-react";
 import { ActiveTaskItem } from "@/types/telemetry";
 import { cn } from "@/lib/utils";
@@ -2038,40 +2049,47 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-4">
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 select-none">
-        <div className="flex items-center gap-2 min-w-0">
-          <h2 className="text-sm font-semibold text-white tracking-wide whitespace-nowrap">
-            Active Transfers
-          </h2>
-          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 shrink-0">
-            {tasks.length}
-          </span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs sm:text-sm font-semibold text-white tracking-wide whitespace-nowrap">
+              Active Stream Pipeline
+            </h2>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shrink-0 font-bold">
+              {tasks.length}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 text-xs font-mono">
           {tasks.length > 0 ? (
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-              <span className="hidden sm:inline">Real-time cloud pipeline</span>
-              <span className="sm:hidden font-medium">Live Stream</span>
+            <span className="flex items-center gap-2 text-emerald-400">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <span className="hidden sm:inline text-[11px] font-medium">Real-time Stream Pipeline</span>
+              <span className="sm:hidden text-[10px] font-medium">Streaming</span>
             </span>
           ) : (
-            <span className="text-slate-500 font-mono text-[11px]">Worker Idle</span>
+            <span className="text-slate-400 font-mono text-[11px]">Worker Idle</span>
           )}
         </div>
       </div>
 
       {tasks.length === 0 ? (
         /* Empty State */
-        <div className="py-10 px-4 rounded-xl border border-dashed border-[#1A263D] bg-[#070B14]/40 flex flex-col items-center justify-center text-center">
-          <HardDrive className="w-8 h-8 text-slate-600 mb-2.5 animate-pulse" />
-          <p className="text-xs font-medium text-slate-300">
-            No active stream jobs running
+        <div className="py-10 px-4 rounded-xl border border-dashed border-white/[0.07] bg-[#070b14]/50 flex flex-col items-center justify-center text-center">
+          <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-2.5 text-slate-500">
+            <Radio className="w-5 h-5 opacity-70" />
+          </div>
+          <p className="text-xs font-semibold text-slate-300">
+            No Active Stream Operations
           </p>
-          <p className="text-[11px] text-slate-500 max-w-sm mt-1 leading-relaxed">
-            Submit a Hugging Face repo or torrent magnet link above to stream files directly into Google Drive.
+          <p className="text-[11px] text-slate-400 max-w-sm mt-1 leading-relaxed">
+            Dispatch a model or dataset link above to establish a live pipeline into Google Drive.
           </p>
         </div>
       ) : (
@@ -2090,20 +2108,20 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
             return (
               <div
                 key={task.id}
-                className="p-3.5 sm:p-4 rounded-xl bg-[#070B14] border border-[#1A263D] hover:border-slate-700/80 transition-all space-y-3"
+                className="p-3.5 sm:p-4 rounded-xl bg-[#070b14] border border-white/[0.07] hover:border-white/[0.12] transition-all space-y-3"
               >
                 {/* File Row */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-400">
                     {isTransferring ? (
                       <DownloadCloud className="w-4 h-4 text-emerald-400" />
                     ) : (
-                      <FileText className="w-4 h-4 text-blue-400" />
+                      <FileText className="w-4 h-4 text-indigo-400" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p
-                      className="text-xs font-medium text-slate-200 truncate font-mono"
+                      className="text-xs font-semibold text-slate-200 truncate font-mono"
                       title={task.name}
                     >
                       {task.name}
@@ -2112,26 +2130,27 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                       <span className="text-[10px] text-slate-400 font-mono">
                         {task.source || "Cloud Stream"}
                       </span>
-                      <span className="text-[10px] text-slate-600">•</span>
-                      <span className="text-[10px] text-emerald-400/80 font-mono">
-                        Direct Stream to Google Drive
+                      <span className="text-[10px] text-slate-700">•</span>
+                      <span className="text-[10px] text-emerald-400/90 font-mono flex items-center gap-1">
+                        <HardDrive className="w-2.5 h-2.5" />
+                        Google Drive: RunSync-Storage
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Status, Speed & Action Controls Row */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-2.5 border-t border-[#151D2E]/80">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-2.5 border-t border-white/[0.05]">
                   {/* Status Badge */}
                   <div className="shrink-0">
                     <span
                       className={cn(
                         "text-[10px] font-medium font-mono px-2.5 py-0.5 rounded-full flex items-center gap-1.5",
                         isComplete
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
                           : isTransferring
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                          : "bg-purple-500/10 text-purple-300 border border-purple-500/30"
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+                          : "bg-purple-500/10 text-purple-300 border border-purple-500/25"
                       )}
                     >
                       {isComplete ? (
@@ -2157,23 +2176,23 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                   <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 ml-auto">
                     {/* Speed indicator */}
                     <div className="text-right font-mono leading-tight">
-                      <div className="text-xs font-semibold text-slate-200">
+                      <div className="text-xs font-semibold text-slate-200 tabular-nums">
                         {task.speed || "0.00 MB/s"}
                       </div>
-                      <div className="text-[10px] text-slate-500 flex items-center justify-end gap-1 mt-0.5">
+                      <div className="text-[10px] text-slate-400 flex items-center justify-end gap-1 mt-0.5">
                         <Clock className="w-2.5 h-2.5 shrink-0" />
                         <span>ETA {task.eta || "-"}</span>
                       </div>
                     </div>
 
                     {/* Action Controls */}
-                    <div className="flex items-center gap-1.5 pl-2.5 border-l border-[#1A263D]">
-                      {/* Disabled Pause Button with explicit disclaimer per roadmap */}
+                    <div className="flex items-center gap-1.5 pl-2.5 border-l border-white/[0.08]">
+                      {/* Disabled Pause Button with disclaimer */}
                       <button
                         type="button"
                         disabled
                         title="Pause/resume is unsupported by the current worker engine"
-                        className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] flex items-center justify-center text-slate-600 cursor-not-allowed opacity-50"
+                        className="w-7 h-7 rounded-lg bg-[#0c111e] border border-white/[0.08] flex items-center justify-center text-slate-600 cursor-not-allowed opacity-40"
                         aria-label="Pause (unsupported)"
                       >
                         <Pause className="w-3 h-3 fill-current" />
@@ -2192,7 +2211,7 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                           <button
                             type="button"
                             onClick={() => setConfirmCancelId(null)}
-                            className="px-1.5 py-1 rounded bg-[#1A263D] text-slate-300 text-[10px] hover:text-white"
+                            className="px-1.5 py-1 rounded bg-[#172036] text-slate-300 text-[10px] hover:text-white"
                           >
                             Back
                           </button>
@@ -2202,8 +2221,8 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                           type="button"
                           onClick={() => setConfirmCancelId(task.id)}
                           disabled={isCancelling}
-                          title="Cancel task"
-                          className="w-7 h-7 rounded-lg bg-[#0D1424] border border-[#1E2C48] hover:border-rose-500/50 hover:bg-rose-500/15 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                          title="Cancel stream operation"
+                          className="w-7 h-7 rounded-lg bg-[#0c111e] border border-white/[0.08] hover:border-rose-500/40 hover:bg-rose-500/15 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all active:scale-95 shadow-sm disabled:opacity-50"
                           aria-label="Cancel task"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -2214,20 +2233,20 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                 </div>
 
                 {/* Progress bar row */}
-                <div className="space-y-1 pt-0.5">
+                <div className="space-y-1.5 pt-0.5">
                   <div className="flex items-center justify-between text-[11px] font-mono">
                     <span className="text-slate-400">Stream Progress</span>
-                    <span className="text-blue-400 font-semibold">
+                    <span className="text-indigo-400 font-semibold tabular-nums">
                       {safeProgress.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-[#0D1424] rounded-full overflow-hidden border border-[#1A263D]">
+                  <div className="w-full h-1.5 bg-[#0c111e] rounded-full overflow-hidden border border-white/[0.06]">
                     <div
                       className={cn(
                         "h-full transition-all duration-300 rounded-full",
                         isTransferring
-                          ? "bg-gradient-to-r from-emerald-500 to-teal-400"
-                          : "bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400"
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                          : "bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
                       )}
                       style={{ width: `${safeProgress}%` }}
                     />
@@ -2250,7 +2269,7 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
 "use client";
 
 import React, { useMemo } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Activity, BarChart2 } from "lucide-react";
 import { SpeedDataPoint } from "@/types/telemetry";
 import { formatBytes } from "@/lib/utils";
 
@@ -2270,7 +2289,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
   const chartPoints = useMemo(() => {
     const width = 300;
     const height = 90;
-    const padding = 5;
+    const padding = 6;
 
     if (!speedHistory || speedHistory.length === 0) {
       return {
@@ -2337,79 +2356,85 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
   return (
     <>
       {/* Card 1: Live Transfer Speed Wave Curve */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between group hover:border-white/[0.12] transition-all">
         <div>
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-medium">Transfer Speed</span>
-            <ArrowUpRight className="w-4 h-4 text-slate-500" />
+            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              Throughput Curve
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">Realtime Stream</span>
           </div>
 
-          <div className="mt-2">
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight">
+          <div className="mt-2.5">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight tabular-nums">
               {currentSpeed.includes("MB/s") ? currentSpeed : `${currentSpeed} MB/s`}
             </div>
             <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
-              Current throughput
+              Current telemetry throughput
             </div>
           </div>
         </div>
 
-        <div className="w-full h-20 sm:h-24 mt-3 sm:mt-4 relative overflow-hidden">
+        <div className="w-full h-20 sm:h-24 mt-4 relative overflow-hidden rounded-xl bg-[#070b14] border border-white/[0.05] p-1.5">
           <svg
             viewBox="0 0 300 90"
             preserveAspectRatio="none"
             className="w-full h-full overflow-visible"
           >
             <defs>
-              <linearGradient id="speedGlow" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+              <linearGradient id="speedGlowCosmic" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.30" />
+                <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
             {chartPoints.area && (
-              <path d={chartPoints.area} fill="url(#speedGlow)" />
+              <path d={chartPoints.area} fill="url(#speedGlowCosmic)" />
             )}
 
             {chartPoints.path && (
               <path
                 d={chartPoints.path}
                 fill="none"
-                stroke="#38BDF8"
-                strokeWidth="2.5"
+                stroke="#38bdf8"
+                strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             )}
           </svg>
 
-          <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-[9px] font-mono text-slate-500 pointer-events-none pr-1">
-            <span>peak</span>
-            <span>avg</span>
+          <div className="absolute right-2 top-1 bottom-1 flex flex-col justify-between text-[8px] font-mono text-slate-400 pointer-events-none pr-1">
+            <span>PEAK</span>
+            <span>AVG</span>
             <span>0</span>
           </div>
         </div>
       </div>
 
       {/* Card 2: 24h Data Transfer Historical Graph */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between group hover:border-white/[0.12] transition-all">
         <div>
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-medium">Data Transfer (24h)</span>
+            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+              <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />
+              Bandwidth Window (24h)
+            </span>
             <div className="flex items-center gap-2 text-[10px] font-mono">
               <span className="flex items-center gap-1 text-sky-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
                 DL
               </span>
-              <span className="flex items-center gap-1 text-blue-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              <span className="flex items-center gap-1 text-indigo-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                 UL
               </span>
             </div>
           </div>
 
-          <div className="mt-2">
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight">
+          <div className="mt-2.5">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight tabular-nums">
               {display24hString}
             </div>
             <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
@@ -2419,15 +2444,15 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
         </div>
 
         {/* Scaled Bar Chart for 24h rolling activity */}
-        <div className="mt-4">
-          <div className="flex items-end justify-between h-20 sm:h-24 gap-1 px-1">
+        <div className="mt-4 p-2 rounded-xl bg-[#070b14] border border-white/[0.05]">
+          <div className="flex items-end justify-between h-16 sm:h-20 gap-1 px-1">
             {hourlyBars.map((bar, index) => {
               const heightPercent = bar.dl > 0
-                ? Math.max(Math.min((bar.dl / maxBar) * 100, 100), 8)
-                : 4;
+                ? Math.max(Math.min((bar.dl / maxBar) * 100, 100), 10)
+                : 6;
               const ulHeightPercent = bar.ul > 0
-                ? Math.max(Math.min((bar.ul / maxBar) * 100, 50), 4)
-                : 2;
+                ? Math.max(Math.min((bar.ul / maxBar) * 100, 50), 6)
+                : 3;
 
               return (
                 <div
@@ -2441,14 +2466,14 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
                   />
                   <div
                     style={{ height: `${ulHeightPercent}%` }}
-                    className="w-full max-w-[4px] rounded-t-sm bg-blue-600/60 group-hover:bg-blue-500 transition-all"
+                    className="w-full max-w-[4px] rounded-t-sm bg-indigo-500/60 group-hover:bg-indigo-400 transition-all"
                   />
                 </div>
               );
             })}
           </div>
 
-          <div className="flex justify-between text-[9px] font-mono text-slate-500 mt-2 px-1 border-t border-[#151D2E]/80 pt-1.5">
+          <div className="flex justify-between text-[8px] font-mono text-slate-400 mt-2 px-1 border-t border-white/[0.04] pt-1">
             <span>00:00</span>
             <span>06:00</span>
             <span>12:00</span>
@@ -2477,6 +2502,8 @@ import {
   Globe,
   Loader2,
   AlertCircle,
+  HelpCircle,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { validateExtractionInput } from "@/lib/validation";
@@ -2501,6 +2528,13 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
   const [source, setSource] = useState<SourceBadge>("auto");
   const [mode, setMode] = useState<ExecutionMode>("cloud");
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Quick preset helper
+  const handleQuickPreset = (presetUrl: string, badge: SourceBadge) => {
+    setUrl(presetUrl);
+    setSource(badge);
+    setValidationError(null);
+  };
 
   // Listen for QuickActions clipboard/preset injection
   useEffect(() => {
@@ -2557,39 +2591,48 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-3.5 sm:space-y-4">
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-3.5">
+      {/* Title & Status */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-400">New Extraction</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-200 tracking-wide">
+            Extraction Composer
+          </span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] text-slate-400 border border-white/[0.06]">
+            Target & Swarm Input
+          </span>
+        </div>
+
         {isSubmitting && (
-          <div className="flex items-center gap-1.5 text-blue-400 text-[11px] sm:text-xs font-mono">
+          <div className="flex items-center gap-1.5 text-indigo-400 text-[11px] sm:text-xs font-mono">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span className="truncate">Dispatching to cloud...</span>
+            <span className="truncate">Arming pipeline...</span>
           </div>
         )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Main URL Input Bar */}
-        <div className="relative flex items-center">
-          <Link2 className="w-4 h-4 text-slate-500 absolute left-3 shrink-0" />
+        {/* Main Command Input Bar */}
+        <div className="relative flex items-center group">
+          <Link2 className="w-4 h-4 text-slate-500 absolute left-3.5 shrink-0 transition-colors group-focus-within:text-indigo-400" />
           <input
             type="text"
             value={url}
             onChange={handleInputChange}
             disabled={isSubmitting}
-            placeholder="Paste infohash, magnet, or Hugging Face repository link..."
-            className="w-full bg-[#070B14] border border-[#1A263D] focus:border-blue-500 rounded-xl pl-9 pr-24 sm:pr-28 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-60"
+            placeholder="Paste Hugging Face repo (e.g. org/model), dataset, or BitTorrent magnet link..."
+            className="w-full bg-[#070b14] border border-white/[0.08] focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/40 rounded-xl pl-10 pr-24 sm:pr-28 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-50"
           />
           <Button
             type="submit"
             size="sm"
             variant="primary"
             disabled={!url.trim() || isSubmitting}
-            className="absolute right-1.5 h-7 sm:h-8 px-2.5 sm:px-3.5 text-xs flex items-center gap-1 disabled:opacity-50"
+            className="absolute right-1.5 h-7 sm:h-8 px-3 text-xs flex items-center gap-1.5"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3 h-3 animate-spin" />
                 <span className="hidden sm:inline">Sending</span>
               </>
             ) : (
@@ -2610,7 +2653,7 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
         )}
 
         {/* Source Badges & Execution Mode Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
           {/* Scrollable Badges */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none no-scrollbar">
             <button
@@ -2620,10 +2663,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
                 setSource("auto");
                 setValidationError(null);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "auto"
-                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/40"
-                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+                  ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 font-semibold"
+                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
               }`}
             >
               <Sparkles className="w-3 h-3" />
@@ -2637,10 +2680,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
                 setSource("hf");
                 setValidationError(null);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "hf"
-                  ? "bg-amber-600/20 text-amber-400 border border-amber-500/40"
-                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold"
+                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
               }`}
             >
               <span>🤗 Hugging Face</span>
@@ -2653,10 +2696,10 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
                 setSource("academic");
                 setValidationError(null);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "academic"
-                  ? "bg-rose-600/20 text-rose-400 border border-rose-500/40"
-                  : "bg-[#070B14] text-slate-400 border border-[#1A263D] hover:text-slate-200"
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold"
+                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
               }`}
             >
               <span>🧲 Academic Torrents</span>
@@ -2664,14 +2707,14 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center self-start sm:self-auto bg-[#070B14] p-0.5 rounded-lg border border-[#1A263D] shrink-0">
+          <div className="flex items-center self-start sm:self-auto bg-[#070b14] p-1 rounded-xl border border-white/[0.06] shrink-0">
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => setMode("cloud")}
-              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-medium flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all ${
                 mode === "cloud"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -2683,9 +2726,9 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               type="button"
               disabled={isSubmitting}
               onClick={() => setMode("local")}
-              className={`px-2.5 py-1 rounded-md text-[11px] sm:text-xs font-medium flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all ${
                 mode === "local"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -2693,6 +2736,34 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               <span>Local Fetch</span>
             </button>
           </div>
+        </div>
+
+        {/* Quick Example Presets (Discreet Helper Row) */}
+        <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-400 font-mono overflow-x-auto no-scrollbar">
+          <span className="shrink-0 text-slate-400">Presets:</span>
+          <button
+            type="button"
+            onClick={() => handleQuickPreset("https://huggingface.co/openai/gpt-oss-20b", "hf")}
+            className="hover:text-indigo-400 hover:underline shrink-0"
+          >
+            openai/gpt-oss-20b
+          </button>
+          <span className="text-slate-700">•</span>
+          <button
+            type="button"
+            onClick={() => handleQuickPreset("https://huggingface.co/datasets/allenai/c4", "hf")}
+            className="hover:text-indigo-400 hover:underline shrink-0"
+          >
+            allenai/c4
+          </button>
+          <span className="text-slate-700">•</span>
+          <button
+            type="button"
+            onClick={() => handleQuickPreset("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Ubuntu-24.04", "academic")}
+            className="hover:text-cyan-400 hover:underline shrink-0"
+          >
+            Academic Torrent Demo
+          </button>
         </div>
       </form>
     </div>
@@ -2775,21 +2846,21 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.activeTransfers.trend,
       isPositive: defaultMetrics.activeTransfers.isPositive,
       icon: Send,
-      iconColor: "text-blue-400",
-      iconBg: "bg-blue-500/10 border-blue-500/25",
+      iconColor: "text-indigo-400",
+      iconBg: "bg-indigo-500/10 border-indigo-500/20",
       sparklineType: "line" as const,
       sparklineColor: "blue" as const,
       sparklineData: Number(defaultMetrics.activeTransfers.value) > 0 ? [0, 1, 1, 1, 2, 1, 1] : defaultFlatSparkline,
     },
     {
       id: "completed",
-      title: "Completed",
+      title: "Completed Jobs",
       value: defaultMetrics.completed.value,
       trend: defaultMetrics.completed.trend,
       isPositive: defaultMetrics.completed.isPositive,
       icon: CheckCircle2,
       iconColor: "text-emerald-400",
-      iconBg: "bg-emerald-500/10 border-emerald-500/25",
+      iconBg: "bg-emerald-500/10 border-emerald-500/20",
       sparklineType: "bars" as const,
       sparklineColor: "emerald" as const,
       sparklineData: Number(defaultMetrics.completed.value) > 0 ? [1, 2, 3, 4, 5, 5, 6] : defaultFlatSparkline,
@@ -2801,21 +2872,21 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.dataExtracted.trend,
       isPositive: defaultMetrics.dataExtracted.isPositive,
       icon: Download,
-      iconColor: "text-purple-400",
-      iconBg: "bg-purple-500/10 border-purple-500/25",
+      iconColor: "text-cyan-400",
+      iconBg: "bg-cyan-500/10 border-cyan-500/20",
       sparklineType: "line" as const,
       sparklineColor: "purple" as const,
       sparklineData: (liveExtractedBytes ?? 0) > 0 ? [10, 20, 35, 50, 70, 85, 100] : defaultFlatSparkline,
     },
     {
       id: "speed",
-      title: "Avg Speed",
+      title: "Throughput Speed",
       value: defaultMetrics.avgSpeed.value,
       trend: defaultMetrics.avgSpeed.trend,
       isPositive: defaultMetrics.avgSpeed.isPositive,
       icon: Zap,
       iconColor: "text-amber-400",
-      iconBg: "bg-amber-500/10 border-amber-500/25",
+      iconBg: "bg-amber-500/10 border-amber-500/20",
       sparklineType: "line" as const,
       sparklineColor: "amber" as const,
       sparklineData: defaultMetrics.avgSpeed.isPositive ? [5, 15, 25, 40, 50, 35, 45] : defaultFlatSparkline,
@@ -2830,16 +2901,16 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
         return (
           <div
             key={card.id}
-            className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl hover:border-slate-700/70 transition-all flex flex-col justify-between"
+            className="p-4 sm:p-5 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm hover:border-white/[0.14] transition-all flex flex-col justify-between group"
           >
-            {/* Top row: Title + Icon */}
+            {/* Top row: Title + Micro Icon */}
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] sm:text-xs font-medium text-slate-400 truncate">
                 {card.title}
               </span>
               <div
                 className={cn(
-                  "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border shrink-0",
+                  "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border shrink-0 transition-transform group-hover:scale-105",
                   card.iconBg
                 )}
               >
@@ -2849,25 +2920,25 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
 
             {/* Middle row: Big Metric Value */}
             <div className="mt-2.5 sm:mt-3">
-              <div className="text-lg sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight truncate">
+              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight truncate tabular-nums">
                 {card.value}
               </div>
             </div>
 
             {/* Bottom row: Trend subtitle + Sparkline */}
-            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-[#151D2E]/80">
+            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-white/[0.05]">
               <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono truncate">
                 <span
                   className={cn(
                     "font-medium",
-                    card.isPositive ? "text-emerald-400" : "text-slate-500"
+                    card.isPositive ? "text-emerald-400" : "text-slate-400"
                   )}
                 >
                   {card.trend}
                 </span>
               </div>
 
-              <div className="w-14 sm:w-16 h-5 shrink-0 opacity-80">
+              <div className="w-14 sm:w-16 h-5 shrink-0 opacity-75 group-hover:opacity-100 transition-opacity">
                 <Sparkline
                   data={card.sparklineData}
                   type={card.sparklineType}
@@ -3001,13 +3072,13 @@ export const QuickActions: React.FC = () => {
   ];
 
   return (
-    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+    <div className="p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm md:text-base font-semibold text-slate-100 tracking-tight">
           Quick Actions
         </h2>
-        <span className="text-xs text-slate-500 font-mono">RunSync Tools</span>
+        <span className="text-xs text-slate-400 font-mono">RunSync Tools</span>
       </div>
 
       {/* 2x3 Grid */}
@@ -3019,8 +3090,8 @@ export const QuickActions: React.FC = () => {
               key={act.id}
               onClick={act.onClick}
               className={cn(
-                "flex items-center gap-2.5 p-3 rounded-xl bg-[#070B14] hover:bg-[#121B30]",
-                "border border-[#1A263D] hover:border-blue-500/40 text-slate-300 hover:text-white",
+                "flex items-center gap-2.5 p-3 rounded-xl bg-[#070b14] hover:bg-[#111728]",
+                "border border-white/[0.06] hover:border-indigo-500/30 text-slate-300 hover:text-white",
                 "transition-all text-xs font-medium cursor-pointer shadow-sm active:scale-[0.98] text-left"
               )}
             >
@@ -3123,7 +3194,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   };
 
   return (
-    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl flex flex-col justify-between">
+    <div className="p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm md:text-base font-semibold text-slate-100 tracking-tight">
@@ -3200,8 +3271,8 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
 
 "use client";
 
-import React from "react";
-import { Server, Power, Loader2, X } from "lucide-react";
+import React, { useEffect } from "react";
+import { Server, Power, Loader2, X, Cpu, Network, HardDrive, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ServerWakeModalProps {
@@ -3217,37 +3288,81 @@ export const ServerWakeModal: React.FC<ServerWakeModalProps> = ({
   onClose,
   onConfirmWake,
 }) => {
-  // Guard ensures zero modal artifacts render when closed
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isBooting && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isBooting, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-150">
-      <div className="w-full max-w-md p-6 rounded-2xl bg-[#0D1424] border border-[#1E2C48] shadow-2xl relative space-y-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wake-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150 select-none"
+    >
+      <div className="w-full max-w-md p-6 rounded-2xl bg-[#0c111e] border border-white/[0.1] shadow-2xl relative space-y-4">
         <button
           onClick={onClose}
           disabled={isBooting}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
-          aria-label="Close modal"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] transition-colors disabled:opacity-30"
+          aria-label="Close dialog"
         >
           <X className="w-4 h-4" />
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
             <Server className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Cloud Worker in Standby</h3>
-            <p className="text-xs text-slate-400">Codespace instance is currently powered off.</p>
+            <h3 id="wake-modal-title" className="text-sm font-semibold text-white">
+              Cloud Worker in Standby
+            </h3>
+            <p className="text-xs text-slate-400">Codespace instance is currently in powersave mode.</p>
           </div>
         </div>
 
-        <p className="text-xs text-slate-300 leading-relaxed bg-[#070B14] p-3 rounded-xl border border-[#1A263D]">
-          To stream files directly to Google Drive, the Codespace worker needs to be activated. Once on, you can freely enqueue multiple tasks. It will <strong>automatically power off after 5 minutes of idle time</strong>.
-        </p>
+        <div className="text-xs text-slate-300 leading-relaxed bg-[#070b14] p-3.5 rounded-xl border border-white/[0.06] space-y-2">
+          <p>
+            To stream files directly to Google Drive, the cloud extraction node needs to be spawned. Once booted, your pending task will automatically dispatch.
+          </p>
+          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1 border-t border-white/[0.04]">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+            <span>Automatically shuts down after 5 minutes of idle time to conserve quota.</span>
+          </div>
+        </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2">
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={isBooting}>
+        {isBooting && (
+          <div className="p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/20 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-indigo-300 font-mono">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+              <span>Booting container (~25-35s)...</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400 pt-1">
+              <span className="flex items-center gap-1 text-slate-300">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                Signal Dispatched
+              </span>
+              <span className="flex items-center gap-1 text-indigo-300">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Tunnel Handshake
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-end gap-2.5 pt-2">
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={isBooting}>
             Cancel
           </Button>
 
@@ -3261,12 +3376,12 @@ export const ServerWakeModal: React.FC<ServerWakeModalProps> = ({
             {isBooting ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Booting Instance (~30s)...</span>
+                <span>Spawning Instance...</span>
               </>
             ) : (
               <>
-                <Power className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Turn On Server</span>
+                <Power className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Spawn Cloud Worker</span>
               </>
             )}
           </Button>
@@ -3276,6 +3391,7 @@ export const ServerWakeModal: React.FC<ServerWakeModalProps> = ({
   );
 };
 
+
 //////////////////////////////////////////////////////////////////
 // FILE: components/dashboard/StorageCard.tsx
 //////////////////////////////////////////////////////////////////
@@ -3284,7 +3400,7 @@ export const ServerWakeModal: React.FC<ServerWakeModalProps> = ({
 
 import React from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, HardDrive, Database, Shield } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -3308,51 +3424,55 @@ export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
   const remainingBytes = Math.max(totalLimit - usedBytes, 0);
 
   return (
-    <div className="p-5 md:p-6 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-xl space-y-4 flex flex-col justify-between">
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-4 flex flex-col justify-between group hover:border-white/[0.12] transition-all">
       <div>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-400">Storage Usage</span>
+          <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+            Drive Vault Storage
+          </span>
           <Link
             href="/storage"
-            className="text-slate-500 hover:text-slate-300 transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+            title="Open Storage File Explorer"
           >
             <ArrowUpRight className="w-4 h-4" />
           </Link>
         </div>
 
-        <div className="flex items-baseline justify-between mt-2">
-          <div className="text-2xl md:text-3xl font-extrabold text-white font-sans">
+        <div className="flex items-baseline justify-between mt-2.5">
+          <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tabular-nums">
             {formatBytes(usedBytes)}{" "}
-            <span className="text-sm font-normal text-slate-400">/ 5 TB</span>
+            <span className="text-xs sm:text-sm font-normal text-slate-400 font-mono">/ 5 TB</span>
           </div>
-          <span className="text-xs font-mono font-semibold text-blue-400">
+          <span className="text-xs font-mono font-bold text-cyan-400 tabular-nums">
             {usedPercentage}%
           </span>
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3.5">
           <Progress
             value={usedPercentage}
             height="h-2"
-            indicatorColor="bg-gradient-to-r from-sky-400 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+            indicatorColor="bg-gradient-to-r from-cyan-400 to-indigo-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
           />
         </div>
       </div>
 
-      <div className="space-y-2 pt-3 border-t border-[#151D2E] text-xs">
+      <div className="space-y-2.5 pt-3.5 border-t border-white/[0.05] text-xs">
         <div className="flex items-center justify-between">
           <span className="text-slate-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]" />
             Extracted Files
           </span>
-          <span className="font-mono text-slate-200">{formatBytes(usedBytes)}</span>
+          <span className="font-mono text-slate-200 tabular-nums">{formatBytes(usedBytes)}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-slate-400 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-slate-600" />
-            Remaining Quota
+            Remaining Allocation
           </span>
-          <span className="font-mono text-emerald-400">
+          <span className="font-mono text-emerald-400 tabular-nums">
             {formatBytes(remainingBytes)}
           </span>
         </div>
@@ -3361,6 +3481,7 @@ export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
   );
 };
 
+
 //////////////////////////////////////////////////////////////////
 // FILE: components/dashboard/WelcomeBanner.tsx
 //////////////////////////////////////////////////////////////////
@@ -3368,8 +3489,9 @@ export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Calendar, Loader2, Power } from "lucide-react";
+import { Calendar, Loader2, Power, Radio, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { auth } from "@/lib/firebase";
 
 interface WelcomeBannerProps {
   userName?: string;
@@ -3380,7 +3502,7 @@ interface WelcomeBannerProps {
 }
 
 export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
-  userName = "Saiteja",
+  userName: fallbackName = "Saiteja",
   isOnline,
   isBooting = false,
   cluster = "Codespace • US-West",
@@ -3389,6 +3511,16 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
   const [currentDate, setCurrentDate] = useState<string>("");
   const [currentTime, setCurrentTime] = useState<string>("");
   const [greeting, setGreeting] = useState<string>("Good afternoon");
+  const [displayName, setDisplayName] = useState<string>(fallbackName);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user && user.displayName) {
+      setDisplayName(user.displayName.split(" ")[0]);
+    } else if (user && user.email) {
+      setDisplayName(user.email.split("@")[0]);
+    }
+  }, []);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -3422,40 +3554,39 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
   }, []);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 select-none pt-1">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 select-none pt-1">
       {/* Left: User Welcome Greeting */}
       <div className="space-y-1">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          {greeting}, {userName} <span className="inline-block animate-wave">👋</span>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight font-sans flex items-center gap-2">
+          <span>{greeting}, {displayName}</span>
+          <span className="inline-block animate-wave text-xl sm:text-2xl">👋</span>
         </h1>
-        <p className="text-[11px] sm:text-xs md:text-sm text-slate-400">
-          Extract, manage, and transfer your files seamlessly.
+        <p className="text-xs sm:text-sm text-slate-400">
+          Swarm telemetry, cloud extraction, and synchronized Drive vault.
         </p>
       </div>
 
-      {/* Right: Real-time Status Pill & Live Clock - Identically dimensioned and aligned */}
+      {/* Right: Real-time Status Pill & Live Clock (Pixel-perfect matching dimensions) */}
       <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:w-auto sm:items-center sm:gap-3 shrink-0">
         {/* Status Pill Card */}
         <div
           onClick={!isOnline && !isBooting && onWake ? onWake : undefined}
-          title={!isOnline && !isBooting ? "Click to boot cloud worker instance" : undefined}
+          title={!isOnline && !isBooting ? "Click to trigger cloud worker wake sequence" : undefined}
           className={cn(
-            "h-[52px] px-3 py-2 rounded-xl bg-[#0D1424] border border-[#1A263D] flex items-center gap-2.5 transition-all min-w-0 select-none",
-            !isOnline && !isBooting && onWake && "cursor-pointer hover:border-blue-500/50 hover:bg-[#111A30]"
+            "h-[52px] px-3.5 py-2 rounded-xl bg-[#0c111e] border border-white/[0.08] flex items-center gap-2.5 transition-all min-w-0 select-none shadow-sm",
+            !isOnline && !isBooting && onWake && "cursor-pointer hover:border-indigo-500/50 hover:bg-[#111728] group"
           )}
         >
-          <div className="w-8 h-8 rounded-lg bg-[#141E33] border border-[#1E2C48] flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#070b14] border border-white/[0.06] flex items-center justify-center shrink-0">
             {isBooting ? (
               <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+            ) : isOnline ? (
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+              </span>
             ) : (
-              <span
-                className={cn(
-                  "w-2.5 h-2.5 rounded-full transition-colors",
-                  isOnline
-                    ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-                    : "bg-slate-500"
-                )}
-              />
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
             )}
           </div>
 
@@ -3463,13 +3594,13 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
             <div className="text-[11px] sm:text-xs font-semibold text-slate-200 flex items-center gap-1.5 leading-tight truncate">
               <span className="truncate">
                 {isBooting
-                  ? "Booting..."
+                  ? "Booting Node..."
                   : isOnline
                   ? "System Online"
                   : "System Standby"}
               </span>
               {!isOnline && !isBooting && onWake && (
-                <Power className="w-3 h-3 text-slate-400 hover:text-blue-400 shrink-0" />
+                <Power className="w-3 h-3 text-slate-400 group-hover:text-indigo-400 shrink-0 transition-colors" />
               )}
             </div>
             <div className="text-[9px] sm:text-[10px] font-mono text-slate-400 truncate mt-0.5 leading-tight">
@@ -3479,8 +3610,8 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
         </div>
 
         {/* Date / Time Card */}
-        <div className="h-[52px] px-3 py-2 rounded-xl bg-[#0D1424] border border-[#1A263D] flex items-center gap-2.5 min-w-0 select-none">
-          <div className="w-8 h-8 rounded-lg bg-[#141E33] border border-[#1E2C48] flex items-center justify-center shrink-0">
+        <div className="h-[52px] px-3.5 py-2 rounded-xl bg-[#0c111e] border border-white/[0.08] flex items-center gap-2.5 min-w-0 select-none shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-[#070b14] border border-white/[0.06] flex items-center justify-center shrink-0">
             <Calendar className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex flex-col justify-center min-w-0">
@@ -3512,7 +3643,7 @@ import {
   User,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
-import { ShieldAlert, LogIn, Loader2, Zap, AlertCircle } from "lucide-react";
+import { ShieldAlert, LogIn, Loader2, Zap, AlertCircle, ArrowRight, ShieldCheck, HardDrive, Cpu, Lock } from "lucide-react";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -3556,57 +3687,161 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error("Login failed:", err);
       setLoading(false);
-      setAuthError(err.message || "Google authentication was cancelled or interrupted.");
+      setAuthError(err.message || "Google authentication was interrupted. Please try again.");
     }
   };
 
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-[#080C14] flex flex-col items-center justify-center text-slate-400 gap-3">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-        <span className="text-xs font-mono">Verifying authorization...</span>
+      <div className="h-screen w-screen bg-[#060911] flex flex-col items-center justify-center text-slate-400 gap-3 select-none">
+        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+          <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+        </div>
+        <span className="text-xs font-mono text-slate-400 tracking-wider">
+          Verifying security handshake...
+        </span>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="h-screen w-screen bg-[#080C14] flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-sm p-6 sm:p-8 rounded-2xl bg-[#0D1424] border border-[#1A263D] shadow-2xl flex flex-col items-center text-center space-y-5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-            <Zap className="w-6 h-6 fill-current" />
-          </div>
+      <div className="min-h-screen w-screen bg-[#060911] text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden select-none">
+        {/* Subtle background ambient celestial glows */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/[0.07] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/[0.05] rounded-full blur-3xl pointer-events-none" />
 
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">RunSync 2.0</h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Private Cloud Extraction & Swarm Pipeline
-            </p>
-          </div>
+        {/* Split Container for Desktop / Stacked for Mobile */}
+        <div className="w-full max-w-4xl bg-[#0c111e]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl md:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden grid grid-cols-1 md:grid-cols-12 relative z-10">
+          
+          {/* Left Hero Pane (Visible on all, expanded on desktop) */}
+          <div className="md:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/[0.07] bg-gradient-to-br from-[#0e1424] to-[#0a0f1b]">
+            <div className="space-y-6">
+              {/* Brand Header */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                  <Zap className="w-4 h-4 fill-current" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-base tracking-tight text-white font-sans">
+                      RunSync
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-semibold">
+                      2.0
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono block">
+                    Cloud Extraction & Swarm Storage
+                  </span>
+                </div>
+              </div>
 
-          {accessDenied && (
-            <div className="w-full p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 text-left">
-              <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400" />
-              <span>
-                Access Denied for <strong>{accessDenied}</strong>. Email is not authorized.
+              {/* Pitch & Mission */}
+              <div className="space-y-2 pt-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
+                  High-throughput cloud pipeline for weights, datasets & archives.
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Stream multi-gigabyte models directly into Google Drive without local network bottlenecks. Powered by isolated scratchpad containers and parallel Rclone pipelines.
+                </p>
+              </div>
+
+              {/* Technical Feature Chips */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                <div className="p-2.5 rounded-xl bg-[#070b14] border border-white/[0.05] flex items-center gap-2">
+                  <Cpu className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span className="text-[11px] font-mono text-slate-300">FastAPI Swarm</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#070b14] border border-white/[0.05] flex items-center gap-2">
+                  <HardDrive className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="text-[11px] font-mono text-slate-300">5 TB Vault</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#070b14] border border-white/[0.05] flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-[11px] font-mono text-slate-300">Zero Leak Auth</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Architecture note */}
+            <div className="pt-6 mt-6 border-t border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <Lock className="w-3 h-3 text-emerald-400" />
+                Authorized Access Only
               </span>
+              <span>US-West Node</span>
             </div>
-          )}
+          </div>
 
-          {authError && (
-            <div className="w-full p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5 text-left">
-              <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-              <span>{authError}</span>
+          {/* Right Authentication Action Pane */}
+          <div className="md:col-span-5 p-6 sm:p-8 md:p-10 flex flex-col justify-between bg-[#0b0f1c] space-y-6">
+            <div>
+              <div className="space-y-1 mb-6">
+                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                  Sign in
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Authenticate with your registered email to access telemetry and storage.
+                </p>
+              </div>
+
+              {/* Access Denied Warning */}
+              {accessDenied && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-start gap-2.5">
+                  <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <strong className="block text-rose-200">Account Restricted</strong>
+                    <span>{accessDenied} is not on the authorized operator whitelist.</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Interruption or Auth Error */}
+              {authError && (
+                <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <strong className="block text-amber-200">Notice</strong>
+                    <span>{authError}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Sign in with Google Button with authentic Google icon */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-[0.98] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-indigo-600/30 border border-indigo-400/20 group cursor-pointer"
+              >
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5c1.54 0 2.93.53 4.02 1.57l3.01-3.01C17.21 1.83 14.79 1 12 1 7.42 1 3.53 3.61 1.63 7.41l3.68 2.85C6.19 7.37 8.87 5 12 5z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58l3.68 2.85c2.14-1.98 3.74-4.89 3.74-8.67z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.31 14.74c-.24-.72-.38-1.49-.38-2.28 0-.79.14-1.56.38-2.28L1.63 7.33C.59 9.4 0 11.64 0 14c0 2.36.59 4.6 1.63 6.67l3.68-2.93z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c3.24 0 5.95-1.08 7.93-2.91l-3.68-2.85c-1.08.72-2.45 1.16-4.25 1.16-3.13 0-5.81-2.37-6.69-5.26L1.63 16.07C3.53 19.87 7.42 22.5 12 22.5z"
+                  />
+                </svg>
+                <span>Continue with Google</span>
+                <ArrowRight className="w-3.5 h-3.5 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             </div>
-          )}
 
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/30"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>Sign in with Google</span>
-          </button>
+            {/* Bottom Security Disclaimer */}
+            <div className="pt-4 border-t border-white/[0.05] text-[10px] text-slate-400 font-mono text-center">
+              Protected by Firebase Admin Server Verification • Strict OAuth 2.0
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -3628,10 +3863,12 @@ import { Zap } from "lucide-react";
 
 export const Header: React.FC = () => {
   return (
-    <header className="h-14 border-b border-[#151D2E]/80 bg-[#080C14]/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 select-none">
+    <header className="h-14 border-b border-white/[0.07] bg-[#070a12]/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 select-none">
       {/* Brand icon / subtle breadcrumb */}
-      <Link href="/" className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white transition-colors">
-        <Zap className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />
+      <Link href="/" className="flex items-center gap-2.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors">
+        <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30">
+          <Zap className="w-3.5 h-3.5 fill-current" />
+        </div>
         <span className="font-mono text-slate-400">RunSync</span>
         <span className="text-slate-600">/</span>
         <span className="text-slate-200">Cloud Pipeline</span>
@@ -3640,8 +3877,8 @@ export const Header: React.FC = () => {
       {/* User profile avatar on the right */}
       <div className="flex items-center gap-3">
         <div
-          title="Saiteja — RunSync Admin"
-          className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center text-white text-[11px] font-bold font-mono shadow-md shadow-purple-600/30 cursor-pointer hover:ring-2 hover:ring-purple-500/50 transition-all"
+          title="Operator — RunSync"
+          className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white text-[11px] font-bold font-mono shadow-md shadow-indigo-500/20 cursor-pointer hover:ring-2 hover:ring-indigo-500/50 transition-all"
         >
           S
         </div>
@@ -3649,6 +3886,7 @@ export const Header: React.FC = () => {
     </header>
   );
 };
+
 
 //////////////////////////////////////////////////////////////////
 // FILE: components/layout/Sidebar.tsx
@@ -3659,8 +3897,19 @@ export const Header: React.FC = () => {
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, HardDrive, Zap, Menu, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  HardDrive,
+  Zap,
+  Menu,
+  X,
+  LogOut,
+  ChevronRight,
+  Shield,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 interface SidebarProps {
   className?: string;
@@ -3669,11 +3918,33 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("Saiteja");
+
+  // Read current authenticated user details
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      if (user.displayName) setUserName(user.displayName);
+      if (user.email) setUserEmail(user.email);
+    }
+  }, []);
 
   // Close drawer automatically on route navigation
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
+  // Close drawer on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   const navItems = [
     {
@@ -3681,17 +3952,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       href: "/",
       icon: LayoutDashboard,
       active: pathname === "/",
+      badge: "Live",
     },
     {
       name: "Storage",
       href: "/storage",
       icon: HardDrive,
       active: pathname.startsWith("/storage"),
+      badge: "5 TB",
     },
   ];
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
+
   const renderNavLinks = (onItemClick?: () => void) => (
-    <nav className="space-y-1">
+    <nav className="space-y-1.5" aria-label="Main Navigation">
       {navItems.map((item) => {
         const Icon = item.icon;
         return (
@@ -3700,14 +3981,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             href={item.href}
             onClick={onItemClick}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all",
+              "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all select-none group",
               item.active
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold"
-                : "text-slate-400 hover:text-slate-200 hover:bg-[#0D1424]"
+                ? "bg-gradient-to-r from-indigo-600/30 to-indigo-500/10 text-white border border-indigo-500/40 shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)] font-bold"
+                : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent"
             )}
           >
-            <Icon className={cn("w-4 h-4", item.active ? "text-white" : "text-slate-400")} />
-            <span>{item.name}</span>
+            <div className="flex items-center gap-3">
+              <Icon
+                className={cn(
+                  "w-4 h-4 transition-colors",
+                  item.active ? "text-indigo-400" : "text-slate-500 group-hover:text-slate-300"
+                )}
+              />
+              <span>{item.name}</span>
+            </div>
+            {item.badge && (
+              <span
+                className={cn(
+                  "text-[9px] font-mono px-1.5 py-0.5 rounded-md",
+                  item.active
+                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                    : "bg-[#070b14] text-slate-500 border border-white/[0.05]"
+                )}
+              >
+                {item.badge}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -3715,31 +4015,47 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   );
 
   const renderUserProfile = () => (
-    <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-[#0D1424] transition-colors cursor-pointer">
-      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center text-xs font-bold font-mono shadow-sm shrink-0">
-        S
+    <div className="p-3 rounded-2xl bg-[#080c16] border border-white/[0.06] flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-500 text-white flex items-center justify-center text-xs font-bold font-mono shadow-sm shrink-0">
+          {userName.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-semibold text-slate-200 truncate leading-tight">
+            {userName}
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono truncate leading-tight mt-0.5" title={userEmail}>
+            {userEmail || "Operator"}
+          </span>
+        </div>
       </div>
-      <div className="flex flex-col min-w-0">
-        <span className="text-xs font-semibold text-slate-200 truncate">Saiteja</span>
-        <span className="text-[10px] text-slate-500 font-mono">RunSync Admin</span>
-      </div>
+
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+        title="Sign out session"
+        aria-label="Sign out"
+      >
+        <LogOut className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 
   return (
     <>
       {/* ================================================================= */}
-      {/* MOBILE TOP BAR (Visible on small screens only)                     */}
+      {/* MOBILE TOP BAR                                                    */}
       {/* ================================================================= */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#080D1A] border-b border-[#151D2E] shrink-0 z-40">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
+      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#070a12]/90 backdrop-blur-md border-b border-white/[0.07] shrink-0 z-40 sticky top-0">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
             <Zap className="w-3.5 h-3.5 fill-current" />
           </div>
-          <span className="font-extrabold text-sm tracking-tight text-white">
+          <span className="font-extrabold text-sm tracking-tight text-white font-sans">
             RunSync
           </span>
-          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-semibold">
             2.0
           </span>
         </Link>
@@ -3747,8 +4063,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className="p-2 rounded-lg bg-[#0D1424] border border-[#1E2C48] text-slate-300 hover:text-white transition-colors"
-          aria-label="Toggle navigation"
+          className="p-2 rounded-xl bg-[#0c111e] border border-white/[0.08] text-slate-300 hover:text-white transition-colors"
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
         >
           {isOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
         </button>
@@ -3759,35 +4076,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       {/* ================================================================= */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden animate-in fade-in duration-200"
           onClick={() => setIsOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Mobile Drawer Panel */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 w-64 bg-[#080D1A] border-r border-[#151D2E] z-50 flex flex-col justify-between md:hidden shadow-2xl transition-transform duration-200 ease-in-out",
+          "fixed inset-y-0 left-0 w-72 bg-[#070b14] border-r border-white/[0.08] z-50 flex flex-col justify-between md:hidden shadow-2xl transition-transform duration-200 ease-in-out p-4",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="p-4 space-y-6">
-          <div className="flex items-center justify-between px-2">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-2 pt-1">
             <Link
               href="/"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2.5"
             >
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
                 <Zap className="w-3.5 h-3.5 fill-current" />
               </div>
               <span className="font-extrabold text-sm tracking-tight text-white">
-                RunSync
+                RunSync 2.0
               </span>
             </Link>
             <button
+              type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded-md text-slate-400 hover:text-white"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05]"
+              aria-label="Close navigation"
             >
               <X className="w-4 h-4" />
             </button>
@@ -3796,31 +4116,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           {renderNavLinks(() => setIsOpen(false))}
         </div>
 
-        <div className="p-4 border-t border-[#151D2E]">
+        <div className="pt-4 border-t border-white/[0.06]">
           {renderUserProfile()}
         </div>
       </aside>
 
       {/* ================================================================= */}
-      {/* DESKTOP PERMANENT SIDEBAR (Hidden on mobile)                       */}
+      {/* DESKTOP PERMANENT SIDEBAR                                         */}
       {/* ================================================================= */}
       <aside
         className={cn(
-          "hidden md:flex w-64 bg-[#080D1A] border-r border-[#151D2E] flex-col justify-between shrink-0 select-none h-screen sticky top-0 z-30",
+          "hidden md:flex w-60 lg:w-64 bg-[#070a12]/95 backdrop-blur-md border-r border-white/[0.07] flex-col justify-between shrink-0 select-none h-screen sticky top-0 z-30 p-4",
           className
         )}
       >
         {/* Top: Logo & Navigation */}
-        <div className="p-4 space-y-6">
-          <Link href="/" className="flex items-center gap-2.5 px-2 py-1 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
+        <div className="space-y-6">
+          <Link href="/" className="flex items-center gap-2.5 px-2 py-1.5 group">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform">
               <Zap className="w-4 h-4 fill-current" />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-base tracking-tight text-white">
+              <span className="font-extrabold text-base tracking-tight text-white font-sans">
                 RunSync
               </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-semibold">
                 2.0
               </span>
             </div>
@@ -3829,14 +4149,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           {renderNavLinks()}
         </div>
 
-        {/* Bottom: User Profile Info */}
-        <div className="p-4 border-t border-[#151D2E]">
+        {/* Bottom: User Profile Info & Sign Out */}
+        <div className="pt-4 border-t border-white/[0.06]">
           {renderUserProfile()}
         </div>
       </aside>
     </>
   );
 };
+
 
 //////////////////////////////////////////////////////////////////
 // FILE: components/ui/badge.tsx
@@ -3853,7 +4174,8 @@ export type BadgeVariant =
   | "failed"
   | "paused"
   | "default"
-  | "outline";
+  | "outline"
+  | "cyan";
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
@@ -3871,19 +4193,21 @@ export const Badge: React.FC<BadgeProps> = ({
   const getBadgeStyle = () => {
     switch (variant) {
       case "downloading":
-        return "bg-purple-950/70 text-purple-300 border border-purple-700/60 shadow-[0_0_12px_-3px_rgba(168,85,247,0.3)]";
+        return "bg-purple-500/10 text-purple-300 border border-purple-500/30 shadow-[0_0_12px_-3px_rgba(168,85,247,0.25)]";
       case "transferring":
-        return "bg-emerald-950/70 text-emerald-300 border border-emerald-700/60 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]";
+        return "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_-3px_rgba(16,185,129,0.25)]";
       case "completed":
-        return "bg-emerald-950/50 text-emerald-400 border border-emerald-800/40";
+        return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
       case "failed":
-        return "bg-rose-950/70 text-rose-400 border border-rose-800/60";
+        return "bg-rose-500/10 text-rose-300 border border-rose-500/30";
       case "paused":
-        return "bg-amber-950/70 text-amber-300 border border-amber-800/60";
+        return "bg-amber-500/10 text-amber-300 border border-amber-500/30";
+      case "cyan":
+        return "bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[0_0_12px_-3px_rgba(6,182,212,0.25)]";
       case "outline":
-        return "bg-[#070B14] text-slate-300 border border-[#1A263D]";
+        return "bg-[#080c16] text-slate-300 border border-white/[0.08]";
       default:
-        return "bg-[#0D1424] text-slate-200 border border-[#1A263D]";
+        return "bg-[#0c111e] text-slate-300 border border-white/[0.08]";
     }
   };
 
@@ -3909,7 +4233,7 @@ export const Badge: React.FC<BadgeProps> = ({
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors font-mono",
+        "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors font-mono tracking-tight",
         getBadgeStyle(),
         className
       )}
@@ -3920,6 +4244,7 @@ export const Badge: React.FC<BadgeProps> = ({
     </span>
   );
 };
+
 
 //////////////////////////////////////////////////////////////////
 // FILE: components/ui/button.tsx
@@ -3932,48 +4257,48 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?:
     | "primary"
     | "secondary"
+    | "outline"
+    | "ghost"
+    | "danger"
     | "pillActive"
     | "pillInactive"
-    | "ghost"
     | "dangerCircle"
     | "iconCircle";
-  size?: "sm" | "md" | "lg" | "icon";
+  size?: "xs" | "sm" | "md" | "lg" | "icon";
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "secondary", size = "md", children, disabled, ...props }, ref) => {
+  ({ className, variant = "secondary", size = "md", children, disabled, type = "button", ...props }, ref) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none";
+      "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-[#060911] disabled:opacity-45 disabled:pointer-events-none select-none";
 
     const variantStyles = {
-      // Primary blue accent
       primary:
-        "bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/40 active:scale-[0.98]",
-      // Dark elevated panel button
+        "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white rounded-xl shadow-[0_0_20px_-3px_rgba(99,102,241,0.35)] active:scale-[0.98]",
       secondary:
-        "bg-[#0D1424] hover:bg-[#151E33] text-slate-200 border border-[#1A263D] hover:border-slate-600 rounded-xl active:scale-[0.98]",
-      // Selected pill toggle
-      pillActive:
-        "bg-white text-slate-900 rounded-full shadow-md font-semibold active:scale-[0.98]",
-      // Inactive pill toggle
-      pillInactive:
-        "bg-[#070B14] hover:bg-[#0D1424] text-slate-400 hover:text-slate-200 border border-[#1A263D] rounded-full",
-      // Ghost button
+        "bg-[#0c111e] hover:bg-[#121828] text-slate-200 border border-white/[0.08] hover:border-white/[0.14] rounded-xl active:scale-[0.98] shadow-sm",
+      outline:
+        "bg-transparent hover:bg-white/[0.04] text-slate-300 border border-white/[0.12] hover:border-white/[0.2] rounded-xl active:scale-[0.98]",
       ghost:
-        "text-slate-400 hover:text-slate-100 hover:bg-[#0D1424] rounded-lg",
-      // Red circular action button
+        "text-slate-400 hover:text-slate-100 hover:bg-white/[0.05] rounded-lg",
+      danger:
+        "bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-xl active:scale-[0.98]",
+      pillActive:
+        "bg-white text-slate-950 font-semibold rounded-full shadow-sm active:scale-[0.98]",
+      pillInactive:
+        "bg-[#080c16] hover:bg-[#0e1424] text-slate-400 hover:text-slate-200 border border-white/[0.06] rounded-full",
       dangerCircle:
-        "w-8 h-8 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/40 p-0 flex items-center justify-center active:scale-95",
-      // Dark circular control button
+        "w-8 h-8 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 p-0 flex items-center justify-center active:scale-95",
       iconCircle:
-        "w-8 h-8 rounded-full bg-[#0D1424] hover:bg-[#151E33] text-slate-300 border border-[#1A263D] p-0 flex items-center justify-center active:scale-95",
+        "w-8 h-8 rounded-full bg-[#0c111e] hover:bg-[#121828] text-slate-300 border border-white/[0.08] p-0 flex items-center justify-center active:scale-95",
     };
 
     const sizeStyles = {
-      sm: "text-xs px-3 py-1.5",
-      md: "text-sm px-4 py-2",
-      lg: "text-base px-6 py-3",
-      icon: "w-9 h-9 p-0",
+      xs: "text-[11px] px-2.5 py-1 rounded-lg gap-1",
+      sm: "text-xs px-3 py-1.5 rounded-lg gap-1.5",
+      md: "text-xs sm:text-sm px-4 py-2 rounded-xl gap-2",
+      lg: "text-sm sm:text-base px-5 py-2.5 rounded-xl gap-2.5",
+      icon: "w-8 h-8 sm:w-9 sm:h-9 p-0 rounded-xl",
     };
 
     const isCircle = variant === "dangerCircle" || variant === "iconCircle";
@@ -3981,6 +4306,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         disabled={disabled}
         className={cn(
           baseStyles,
@@ -3997,6 +4323,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = "Button";
+
 
 //////////////////////////////////////////////////////////////////
 // FILE: components/ui/progress.tsx
