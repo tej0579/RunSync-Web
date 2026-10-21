@@ -26,7 +26,7 @@ export async function checkBackendHealth(): Promise<BackendHealthResponse | null
     const data = await res.json().catch(() => null);
     if (!data) return null;
 
-    return data.status === "online" ? data : null;
+    return data;
   } catch {
     return null;
   }
