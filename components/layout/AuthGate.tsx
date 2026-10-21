@@ -8,7 +8,7 @@ import {
   User,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
-import { ShieldAlert, LogIn, Loader2, Zap, AlertCircle, ArrowRight, ShieldCheck, HardDrive, Cpu, Lock } from "lucide-react";
+import { ShieldAlert, Loader2, Zap, AlertCircle, ArrowRight, ShieldCheck, HardDrive, Cpu, Lock } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
@@ -59,7 +59,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-slate-50 dark:bg-[#060911] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3 select-none">
+      <div className="h-screen w-full bg-slate-50 dark:bg-[#060911] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3 select-none">
         <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
           <Loader2 className="w-5 h-5 text-indigo-500 dark:text-indigo-400 animate-spin" />
         </div>
@@ -72,71 +72,71 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="min-h-screen w-screen bg-slate-50 dark:bg-[#060911] text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden select-none transition-colors duration-150">
-        {/* Top Right Theme Toggle on Login Screen */}
-        <div className="absolute top-4 right-4 z-20">
-          <ThemeToggle variant="icon" />
-        </div>
-
+      <div className="min-h-[100dvh] w-full bg-slate-50 dark:bg-[#060911] text-slate-900 dark:text-slate-100 flex items-center justify-center p-3.5 sm:p-6 md:p-8 relative overflow-y-auto select-none transition-colors duration-150 py-6 sm:py-10">
         {/* Subtle background ambient celestial glows */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/[0.08] dark:bg-indigo-600/[0.07] rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/[0.06] dark:bg-cyan-500/[0.05] rounded-full blur-3xl pointer-events-none" />
 
         {/* Split Container for Desktop / Stacked for Mobile */}
-        <div className="w-full max-w-4xl bg-white/95 dark:bg-[#0c111e]/90 backdrop-blur-xl border border-slate-200 dark:border-white/[0.08] rounded-2xl md:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden grid grid-cols-1 md:grid-cols-12 relative z-10">
+        <div className="w-full max-w-4xl bg-white/95 dark:bg-[#0c111e]/90 backdrop-blur-xl border border-slate-200 dark:border-white/[0.08] rounded-2xl md:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden grid grid-cols-1 md:grid-cols-12 relative z-10 my-auto">
           
           {/* Left Hero Pane (Visible on all, expanded on desktop) */}
-          <div className="md:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/[0.07] bg-gradient-to-br from-slate-50/80 to-indigo-50/30 dark:from-[#0e1424] dark:to-[#0a0f1b]">
-            <div className="space-y-6">
-              {/* Brand Header */}
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-                  <Zap className="w-4 h-4 fill-current" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white font-sans">
-                      RunSync
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-semibold">
-                      2.0
+          <div className="md:col-span-7 p-5 sm:p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/[0.07] bg-gradient-to-br from-slate-50/80 to-indigo-50/30 dark:from-[#0e1424] dark:to-[#0a0f1b]">
+            <div className="space-y-4 sm:space-y-6">
+              {/* Brand Header with Integrated Theme Toggle */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 shrink-0">
+                    <Zap className="w-4 h-4 fill-current" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white font-sans">
+                        RunSync
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-semibold">
+                        2.0
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono block">
+                      Cloud Extraction & Swarm Storage
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono block">
-                    Cloud Extraction & Swarm Storage
-                  </span>
                 </div>
+
+                {/* Safe in-card Theme Toggle */}
+                <ThemeToggle variant="icon" />
               </div>
 
               {/* Pitch & Mission */}
-              <div className="space-y-2 pt-2">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
+              <div className="space-y-1.5 sm:space-y-2 pt-1 sm:pt-2">
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                   High-throughput cloud pipeline for weights, datasets & archives.
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed hidden sm:block">
                   Stream multi-gigabyte models directly into Google Drive without local network bottlenecks. Powered by isolated scratchpad containers and parallel Rclone pipelines.
                 </p>
               </div>
 
               {/* Technical Feature Chips */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
-                <div className="p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-2 shadow-xs">
+              <div className="grid grid-cols-3 gap-2 pt-1 sm:pt-2">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-1.5 sm:gap-2 shadow-2xs">
                   <Cpu className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300">FastAPI Swarm</span>
+                  <span className="text-[10px] sm:text-[11px] font-mono text-slate-700 dark:text-slate-300 truncate">FastAPI</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-2 shadow-xs">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-1.5 sm:gap-2 shadow-2xs">
                   <HardDrive className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300">5 TB Vault</span>
+                  <span className="text-[10px] sm:text-[11px] font-mono text-slate-700 dark:text-slate-300 truncate">5 TB Vault</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-2 shadow-xs">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-1.5 sm:gap-2 shadow-2xs">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300">Zero Leak Auth</span>
+                  <span className="text-[10px] sm:text-[11px] font-mono text-slate-700 dark:text-slate-300 truncate">Zero Leak</span>
                 </div>
               </div>
             </div>
 
             {/* Architecture note */}
-            <div className="pt-6 mt-6 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400">
+            <div className="pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
                 <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 Authorized Access Only
@@ -146,9 +146,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Right Authentication Action Pane */}
-          <div className="md:col-span-5 p-6 sm:p-8 md:p-10 flex flex-col justify-between bg-white dark:bg-[#0b0f1c] space-y-6">
+          <div className="md:col-span-5 p-5 sm:p-8 md:p-10 flex flex-col justify-between bg-white dark:bg-[#0b0f1c] space-y-5 sm:space-y-6">
             <div>
-              <div className="space-y-1 mb-6">
+              <div className="space-y-1 mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Sign in
                 </h3>
@@ -163,7 +163,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   <ShieldAlert className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400 mt-0.5" />
                   <div className="leading-relaxed">
                     <strong className="block text-rose-800 dark:text-rose-200">Account Restricted</strong>
-                    <span>{accessDenied} is not on the authorized operator whitelist.</span>
+                    <span>{accessDenied} is not on the authorized whitelist.</span>
                   </div>
                 </div>
               )}
@@ -209,7 +209,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Bottom Security Disclaimer */}
-            <div className="pt-4 border-t border-slate-200 dark:border-white/[0.05] text-[10px] text-slate-500 dark:text-slate-400 font-mono text-center">
+            <div className="pt-3 sm:pt-4 border-t border-slate-200 dark:border-white/[0.05] text-[10px] text-slate-500 dark:text-slate-400 font-mono text-center">
               Protected by Firebase Admin Server Verification • Strict OAuth 2.0
             </div>
           </div>
