@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Disable floating development overlay indicators (the black circular "N" badge)
+  devIndicators: false,
+
   // Allow phone network connection to receive live HMR updates in development
   allowedDevOrigins: ["10.34.117.48", "10.34.117.48:3000"],
 
