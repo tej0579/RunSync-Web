@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getApps, initializeApp, getApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { jwtVerify, createRemoteJWKSet } from "jose";
 import { getServerEnv, getAllowedEmails } from "@/lib/env";
 
 export type UserRole = "admin" | "operator" | "viewer";
@@ -16,18 +15,23 @@ export type AuthResult =
   | { authenticated: false; authorized: false; response: NextResponse }
   | { authenticated: true; authorized: false; response: NextResponse };
 
-function getFirebaseAdminAuth() {
-  const env = getServerEnv();
-  const projectId = env.FIREBASE_PROJECT_ID || "authentication-1de46";
+// Google's public JWKS for Firebase Auth token verification (cached automatically by jose)
+const FIREBASE_JWKS_URL = new URL(
+  "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+);
+let googleJWKS: ReturnType<typeof createRemoteJWKSet> | null = null;
 
-  const app = getApps().length > 0 ? getApp() : initializeApp({ projectId });
-  return getAuth(app);
+function getGoogleJWKS() {
+  if (!googleJWKS) {
+    googleJWKS = createRemoteJWKSet(FIREBASE_JWKS_URL);
+  }
+  return googleJWKS;
 }
 
 /**
  * Server-side Authentication & Authorization Verifier
  * Verifies the incoming Firebase ID token against Google's public keys.
- * Enforces email whitelist and role requirements.
+ * Enforces email whitelist and role requirements using standard, lightweight JOSE.
  */
 export async function verifyServerAuth(
   req: NextRequest,
@@ -81,9 +85,15 @@ export async function verifyServerAuth(
   }
 
   try {
-    const adminAuth = getFirebaseAdminAuth();
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const email = (decodedToken.email || "").toLowerCase();
+    const projectId = env.FIREBASE_PROJECT_ID || "authentication-1de46";
+    const jwks = getGoogleJWKS();
+    const { payload } = await jwtVerify(token, jwks, {
+      issuer: `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
+    });
+
+    const email = typeof payload.email === "string" ? payload.email.toLowerCase() : "";
+    const uid = typeof payload.sub === "string" ? payload.sub : "";
 
     if (!email) {
       return {
@@ -130,7 +140,7 @@ export async function verifyServerAuth(
       authenticated: true,
       authorized: true,
       user: {
-        uid: decodedToken.uid,
+        uid,
         email,
         role,
       },
