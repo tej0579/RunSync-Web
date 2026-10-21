@@ -1,7 +1,7 @@
 // ================================================================
 // RunSync 2.0 - Complete Production-Hardened Application Code Export
-// Generated: 2026-10-21T12:21:49.618Z
-// Total files included: 40
+// Generated: 2026-10-21T12:38:51.920Z
+// Total files included: 43
 // ================================================================
 
 //////////////////////////////////////////////////////////////////
@@ -834,6 +834,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { AuthGate } from "@/components/layout/AuthGate";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -856,21 +857,41 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark h-full">
+    <html lang="en" className="dark h-full" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const savedTheme = localStorage.getItem('runsync_theme');
+                if (savedTheme === 'light') {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.classList.add('light');
+                } else {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('light');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-[#060911] text-slate-100 antialiased h-[100dvh] max-h-[100dvh] flex flex-col md:flex-row overflow-hidden selection:bg-indigo-500/30 selection:text-white`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-slate-50 text-slate-900 dark:bg-[#060911] dark:text-slate-100 antialiased h-[100dvh] max-h-[100dvh] flex flex-col md:flex-row overflow-hidden selection:bg-indigo-500/30 selection:text-indigo-900 dark:selection:text-white transition-colors duration-150`}
       >
-        <AuthGate>
-          {/* Navigation: Responsive Topbar + Slide Drawer on Mobile, Fixed Sidebar on Desktop */}
-          <Sidebar />
+        <ThemeProvider>
+          <AuthGate>
+            {/* Navigation: Responsive Topbar + Slide Drawer on Mobile, Fixed Sidebar on Desktop */}
+            <Sidebar />
 
-          {/* Independent Scrollable Content Area with Safe Bottom Padding */}
-          <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-y-auto overscroll-y-contain">
-            <main className="flex-1 px-3.5 sm:px-6 md:px-8 pt-5 sm:pt-6 pb-36 sm:pb-28 md:pb-16 max-w-7xl w-full mx-auto">
-              {children}
-            </main>
-          </div>
-        </AuthGate>
+            {/* Independent Scrollable Content Area with Safe Bottom Padding */}
+            <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-y-auto overscroll-y-contain">
+              <main className="flex-1 px-3.5 sm:px-6 md:px-8 pt-5 sm:pt-6 pb-36 sm:pb-28 md:pb-16 max-w-7xl w-full mx-auto">
+                {children}
+              </main>
+            </div>
+          </AuthGate>
+        </ThemeProvider>
       </body>
     </html>
   );
@@ -1181,15 +1202,15 @@ export default function DashboardPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#0c111e]/95 backdrop-blur-md border border-white/[0.1] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/95 dark:bg-[#0c111e]/95 backdrop-blur-md border border-slate-200 dark:border-white/[0.1] text-xs shadow-2xl text-slate-900 dark:text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
         >
-          {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-          {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
-          {toast.type === "info" && <Loader2 className="w-4 h-4 text-indigo-400 animate-spin shrink-0" />}
+          {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+          {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />}
+          {toast.type === "info" && <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin shrink-0" />}
           <span className="flex-1 leading-normal font-medium">{toast.message}</span>
           <button
             onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.05] transition-colors ml-1"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors ml-1"
             aria-label="Dismiss message"
           >
             <X className="w-3.5 h-3.5" />
@@ -1273,7 +1294,6 @@ import {
   Film,
   Database,
   Binary,
-  FolderTree,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -1308,7 +1328,7 @@ function getFileIcon(name: string, mimeType: string) {
     lower.endsWith(".onnx") ||
     lower.endsWith(".gguf")
   ) {
-    return <Binary className="w-4 h-4 text-purple-400 shrink-0" />;
+    return <Binary className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />;
   }
 
   if (
@@ -1318,7 +1338,7 @@ function getFileIcon(name: string, mimeType: string) {
     lower.endsWith(".json") ||
     lower.endsWith(".jsonl")
   ) {
-    return <Database className="w-4 h-4 text-emerald-400 shrink-0" />;
+    return <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />;
   }
 
   if (
@@ -1328,7 +1348,7 @@ function getFileIcon(name: string, mimeType: string) {
     lower.endsWith(".mov") ||
     mimeType.startsWith("video/")
   ) {
-    return <Film className="w-4 h-4 text-amber-400 shrink-0" />;
+    return <Film className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />;
   }
 
   if (
@@ -1338,7 +1358,7 @@ function getFileIcon(name: string, mimeType: string) {
     lower.endsWith(".7z") ||
     lower.endsWith(".rar")
   ) {
-    return <FileArchive className="w-4 h-4 text-rose-400 shrink-0" />;
+    return <FileArchive className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />;
   }
 
   if (
@@ -1349,10 +1369,10 @@ function getFileIcon(name: string, mimeType: string) {
     lower.endsWith(".yaml") ||
     lower.endsWith(".yml")
   ) {
-    return <FileCode className="w-4 h-4 text-cyan-400 shrink-0" />;
+    return <FileCode className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />;
   }
 
-  return <FileText className="w-4 h-4 text-slate-400 shrink-0" />;
+  return <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />;
 }
 
 function DriveRow({
@@ -1374,8 +1394,8 @@ function DriveRow({
   return (
     <>
       <tr
-        className={`hover:bg-white/[0.03] transition-colors text-slate-200 border-b border-white/[0.05] ${
-          depth > 0 ? "bg-[#060911]/50" : ""
+        className={`hover:bg-slate-100/70 dark:hover:bg-white/[0.03] transition-colors text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-white/[0.05] ${
+          depth > 0 ? "bg-slate-50/80 dark:bg-[#060911]/50" : ""
         }`}
       >
         <td
@@ -1385,12 +1405,12 @@ function DriveRow({
           {item.isFolder ? (
             <button
               onClick={() => onToggleFolder(item)}
-              className="p-1 -ml-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors"
+              className="p-1 -ml-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-200/50 dark:hover:bg-white/[0.05] transition-colors"
               title={isExpanded ? "Collapse folder" : "Expand folder"}
               aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
             >
               {isExpanded ? (
-                <ChevronDown className="w-3.5 h-3.5 text-indigo-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               ) : (
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
               )}
@@ -1402,7 +1422,7 @@ function DriveRow({
           {item.isFolder ? (
             <Folder
               onClick={() => onToggleFolder(item)}
-              className="w-4 h-4 text-indigo-400 shrink-0 cursor-pointer"
+              className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 cursor-pointer"
             />
           ) : (
             getFileIcon(item.name, item.mimeType)
@@ -1411,7 +1431,7 @@ function DriveRow({
           <span
             onClick={() => item.isFolder && onToggleFolder(item)}
             className={`font-medium truncate text-xs ${
-              item.isFolder ? "cursor-pointer hover:text-indigo-300 font-semibold" : ""
+              item.isFolder ? "cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 font-semibold" : ""
             }`}
             title={item.name}
           >
@@ -1419,10 +1439,10 @@ function DriveRow({
           </span>
         </td>
 
-        <td className="py-2.5 px-3 font-mono text-slate-400 text-[11px] sm:text-xs whitespace-nowrap tabular-nums">
+        <td className="py-2.5 px-3 font-mono text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs whitespace-nowrap tabular-nums">
           {item.sizeFormatted}
         </td>
-        <td className="py-2.5 px-3 text-slate-400 text-[11px] sm:text-xs whitespace-nowrap">
+        <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs whitespace-nowrap">
           {item.modifiedFormatted}
         </td>
         <td className="py-2.5 px-3 text-right whitespace-nowrap">
@@ -1431,11 +1451,11 @@ function DriveRow({
               <button
                 type="button"
                 onClick={() => onDownload(item)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all inline-flex items-center"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all inline-flex items-center"
                 title="Direct download file via authenticated proxy"
                 aria-label={`Download ${item.name}`}
               >
-                <DownloadCloud className="w-3.5 h-3.5 text-slate-300 hover:text-cyan-400" />
+                <DownloadCloud className="w-3.5 h-3.5 text-slate-500 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-400" />
               </button>
             )}
 
@@ -1444,7 +1464,7 @@ function DriveRow({
                 href={item.webViewLink}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-white/[0.08] transition-all inline-flex items-center"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50 dark:hover:text-indigo-400 dark:hover:bg-white/[0.08] transition-all inline-flex items-center"
                 title={
                   item.isFolder
                     ? "Open folder in Google Drive"
@@ -1462,24 +1482,24 @@ function DriveRow({
       {isExpanded && (
         <>
           {item.isLoadingChildren ? (
-            <tr className="bg-[#070b14]">
+            <tr className="bg-slate-50 dark:bg-[#070b14]">
               <td
                 colSpan={4}
                 style={{ paddingLeft: `${paddingLeftPx + 24}px` }}
-                className="py-2.5 pr-3 text-slate-400"
+                className="py-2.5 pr-3 text-slate-500 dark:text-slate-400"
               >
                 <div className="flex items-center gap-2 font-mono text-[10px]">
-                  <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                  <Loader2 className="w-3 h-3 animate-spin text-indigo-600 dark:text-indigo-400" />
                   <span>Loading directory contents...</span>
                 </div>
               </td>
             </tr>
           ) : !item.children || item.children.length === 0 ? (
-            <tr className="bg-[#070b14]">
+            <tr className="bg-slate-50 dark:bg-[#070b14]">
               <td
                 colSpan={4}
                 style={{ paddingLeft: `${paddingLeftPx + 24}px` }}
-                className="py-2 pr-3 text-slate-400 italic text-[10px]"
+                className="py-2 pr-3 text-slate-400 dark:text-slate-500 italic text-[10px]"
               >
                 (Empty folder)
               </td>
@@ -1737,20 +1757,20 @@ export default function StoragePage() {
   const displayedFiles = isSearchActive ? searchResults : rootFiles;
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-8">
+    <div className="space-y-4 sm:space-y-6 pb-8 transition-colors">
       {/* Header with Breadcrumbs & Primary Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 select-none">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-1">
-            <span className="text-indigo-400">RunSync Vault</span>
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
+            <span className="text-indigo-600 dark:text-indigo-400 font-semibold">RunSync Vault</span>
             <span>/</span>
-            <span className="text-slate-300">RunSync-Storage</span>
+            <span className="text-slate-700 dark:text-slate-300">RunSync-Storage</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <HardDrive className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <HardDrive className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-600 dark:text-cyan-400" />
             <span>Google Drive Storage</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
             Explore and download extracted models, weights, and dataset archives.
           </p>
         </div>
@@ -1764,8 +1784,8 @@ export default function StoragePage() {
             className="flex items-center gap-1.5 h-8 text-xs"
           >
             <RefreshCw
-              className={`w-3.5 h-3.5 text-slate-400 ${
-                isRefreshing ? "animate-spin text-indigo-400" : ""
+              className={`w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ${
+                isRefreshing ? "animate-spin text-indigo-600 dark:text-indigo-400" : ""
               }`}
             />
             <span>Refresh</span>
@@ -1793,8 +1813,8 @@ export default function StoragePage() {
 
       {/* Error Alert */}
       {errorMsg && (
-        <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-3">
-          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+        <div className="p-3.5 sm:p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400" />
           <div>
             <span className="font-semibold">Notice: </span>
             {errorMsg}
@@ -1803,19 +1823,19 @@ export default function StoragePage() {
       )}
 
       {/* Quota Overview (5 TB) */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-3.5">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-[11px] sm:text-xs text-slate-400 font-medium font-mono">
+            <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium font-mono">
               Destination Vault Allocation
             </div>
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans mt-0.5 tabular-nums">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans mt-0.5 tabular-nums">
               {formatBytes(totalDriveBytes)}{" "}
-              <span className="text-xs sm:text-sm text-slate-400 font-normal font-mono">/ 5 TB</span>
+              <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-normal font-mono">/ 5 TB</span>
             </div>
           </div>
           <div>
-            <span className="text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
+            <span className="text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30 whitespace-nowrap">
               {usedPercentage}% Used
             </span>
           </div>
@@ -1824,25 +1844,25 @@ export default function StoragePage() {
         <Progress
           value={usedPercentage}
           height="h-2"
-          indicatorColor="bg-gradient-to-r from-cyan-400 to-indigo-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+          indicatorColor="bg-gradient-to-r from-cyan-500 to-indigo-500 dark:from-cyan-400 dark:to-indigo-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
         />
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 text-[10px] sm:text-xs border-t border-white/[0.05]">
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#070b14] border border-white/[0.05]">
-            <span className="text-slate-400 truncate block">Total Extracted</span>
-            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate tabular-nums">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 text-[10px] sm:text-xs border-t border-slate-100 dark:border-white/[0.05]">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05]">
+            <span className="text-slate-500 dark:text-slate-400 truncate block">Total Extracted</span>
+            <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-200 mt-0.5 truncate tabular-nums">
               {formatBytes(totalDriveBytes)}
             </div>
           </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#070b14] border border-white/[0.05]">
-            <span className="text-slate-400 truncate block">Directory Items</span>
-            <div className="text-xs sm:text-sm font-semibold text-slate-200 mt-0.5 truncate tabular-nums">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05]">
+            <span className="text-slate-500 dark:text-slate-400 truncate block">Directory Items</span>
+            <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-200 mt-0.5 truncate tabular-nums">
               {rootFiles.length} item(s)
             </div>
           </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#070b14] border border-white/[0.05]">
-            <span className="text-slate-400 truncate block">Free Pool</span>
-            <div className="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5 truncate tabular-nums">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05]">
+            <span className="text-slate-500 dark:text-slate-400 truncate block">Free Pool</span>
+            <div className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate tabular-nums">
               {formatBytes(remainingBytes)}
             </div>
           </div>
@@ -1850,13 +1870,13 @@ export default function StoragePage() {
       </div>
 
       {/* Drive File Browser & Search */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-3.5">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="relative flex-1 max-w-sm">
             {isSearching ? (
-              <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin absolute left-3 top-1/2 -translate-y-1/2" />
+              <Loader2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-spin absolute left-3 top-1/2 -translate-y-1/2" />
             ) : (
-              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             )}
             <input
               type="text"
@@ -1866,19 +1886,19 @@ export default function StoragePage() {
                 if (e.key === "Escape") handleClearSearch();
               }}
               placeholder="Filter across vault files & subdirectories..."
-              className="w-full bg-[#070b14] border border-white/[0.08] focus:border-indigo-500/80 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-mono"
+              className="w-full bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.08] focus:border-indigo-500/80 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all font-mono"
             />
             {searchTerm && (
               <button
                 onClick={handleClearSearch}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
                 title="Clear filter (Esc)"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          <span className="text-[11px] sm:text-xs text-slate-400 font-mono">
+          <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-mono">
             {isSearchActive
               ? `${displayedFiles.length} match(es)`
               : `${displayedFiles.length} item(s)`}
@@ -1886,21 +1906,21 @@ export default function StoragePage() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block rounded-xl border border-white/[0.08] overflow-hidden bg-[#070b14]/50">
+        <div className="hidden md:block rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden bg-slate-50/50 dark:bg-[#070b14]/50">
           {loading ? (
             <div className="py-14 flex flex-col items-center justify-center text-slate-400 space-y-2.5">
-              <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+              <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400" />
               <span className="text-xs font-mono">Loading Drive inventory...</span>
             </div>
           ) : displayedFiles.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-xs">
+            <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-xs">
               {isSearchActive
                 ? `No files or folders matched "${searchTerm}".`
                 : "No files found in destination folder."}
             </div>
           ) : (
             <table className="w-full text-left text-xs min-w-[520px]">
-              <thead className="bg-[#070b14] text-slate-400 border-b border-white/[0.08] font-mono text-[10px] sm:text-[11px]">
+              <thead className="bg-slate-100 dark:bg-[#070b14] text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.08] font-mono text-[10px] sm:text-[11px]">
                 <tr>
                   <th className="py-2.5 px-3 font-semibold">Name</th>
                   <th className="py-2.5 px-3 font-semibold">Size</th>
@@ -1908,7 +1928,7 @@ export default function StoragePage() {
                   <th className="py-2.5 px-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                 {displayedFiles.map((file) => (
                   <DriveRow
                     key={file.id}
@@ -1928,11 +1948,11 @@ export default function StoragePage() {
         <div className="md:hidden space-y-2">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
-              <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+              <Loader2 className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400" />
               <span className="text-xs font-mono">Loading inventory...</span>
             </div>
           ) : displayedFiles.length === 0 ? (
-            <div className="py-10 text-center text-slate-400 text-xs rounded-xl bg-[#070b14] border border-white/[0.06]">
+            <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-xs rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.06]">
               {isSearchActive
                 ? `No files matched "${searchTerm}".`
                 : "No files found in destination folder."}
@@ -1941,19 +1961,19 @@ export default function StoragePage() {
             displayedFiles.map((file) => (
               <div
                 key={file.id}
-                className="p-3 rounded-xl bg-[#070b14] border border-white/[0.07] space-y-2"
+                className="p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.07] space-y-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     {file.isFolder ? (
-                      <Folder className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <Folder className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                     ) : (
                       getFileIcon(file.name, file.mimeType)
                     )}
                     <span
                       onClick={() => file.isFolder && handleToggleFolder(file)}
-                      className={`text-xs font-medium text-slate-200 truncate ${
-                        file.isFolder ? "cursor-pointer hover:text-indigo-300 font-semibold" : ""
+                      className={`text-xs font-medium text-slate-900 dark:text-slate-200 truncate ${
+                        file.isFolder ? "cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 font-semibold" : ""
                       }`}
                       title={file.name}
                     >
@@ -1966,11 +1986,11 @@ export default function StoragePage() {
                       <button
                         type="button"
                         onClick={() => handleDownload(file)}
-                        className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/[0.08] transition-all"
+                        className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all"
                         title="Download file"
                         aria-label={`Download ${file.name}`}
                       >
-                        <DownloadCloud className="w-4 h-4 text-cyan-400" />
+                        <DownloadCloud className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                       </button>
                     )}
                     {file.webViewLink && (
@@ -1978,7 +1998,7 @@ export default function StoragePage() {
                         href={file.webViewLink}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-white/[0.08] transition-all"
+                        className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/60 dark:hover:text-indigo-400 dark:hover:bg-white/[0.08] transition-all"
                         title="Open in Drive"
                         aria-label={`Open ${file.name} in Drive`}
                       >
@@ -1988,7 +2008,7 @@ export default function StoragePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1.5 border-t border-white/[0.05]">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-white/[0.05]">
                   <span>Size: {file.sizeFormatted}</span>
                   <span>Modified: {file.modifiedFormatted}</span>
                 </div>
@@ -2019,7 +2039,6 @@ import {
   Clock,
   Zap,
   Radio,
-  Layers,
 } from "lucide-react";
 import { ActiveTaskItem } from "@/types/telemetry";
 import { cn } from "@/lib/utils";
@@ -2049,15 +2068,15 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-4">
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs space-y-4 transition-colors">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-xs sm:text-sm font-semibold text-white tracking-wide whitespace-nowrap">
+            <h2 className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-white tracking-wide whitespace-nowrap">
               Active Stream Pipeline
             </h2>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shrink-0 font-bold">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/30 shrink-0 font-bold">
               {tasks.length}
             </span>
           </div>
@@ -2065,30 +2084,30 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
 
         <div className="flex items-center gap-1.5 shrink-0 text-xs font-mono">
           {tasks.length > 0 ? (
-            <span className="flex items-center gap-2 text-emerald-400">
+            <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
               <span className="hidden sm:inline text-[11px] font-medium">Real-time Stream Pipeline</span>
               <span className="sm:hidden text-[10px] font-medium">Streaming</span>
             </span>
           ) : (
-            <span className="text-slate-400 font-mono text-[11px]">Worker Idle</span>
+            <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">Worker Idle</span>
           )}
         </div>
       </div>
 
       {tasks.length === 0 ? (
         /* Empty State */
-        <div className="py-10 px-4 rounded-xl border border-dashed border-white/[0.07] bg-[#070b14]/50 flex flex-col items-center justify-center text-center">
-          <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-2.5 text-slate-500">
+        <div className="py-10 px-4 rounded-xl border border-dashed border-slate-200 dark:border-white/[0.07] bg-slate-50/50 dark:bg-[#070b14]/50 flex flex-col items-center justify-center text-center">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] flex items-center justify-center mb-2.5 text-slate-400 dark:text-slate-500">
             <Radio className="w-5 h-5 opacity-70" />
           </div>
-          <p className="text-xs font-semibold text-slate-300">
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
             No Active Stream Operations
           </p>
-          <p className="text-[11px] text-slate-400 max-w-sm mt-1 leading-relaxed">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm mt-1 leading-relaxed">
             Dispatch a model or dataset link above to establish a live pipeline into Google Drive.
           </p>
         </div>
@@ -2108,30 +2127,30 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
             return (
               <div
                 key={task.id}
-                className="p-3.5 sm:p-4 rounded-xl bg-[#070b14] border border-white/[0.07] hover:border-white/[0.12] transition-all space-y-3"
+                className="p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.07] hover:border-slate-300 dark:hover:border-white/[0.12] transition-all space-y-3 shadow-xs"
               >
                 {/* File Row */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-400">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400">
                     {isTransferring ? (
-                      <DownloadCloud className="w-4 h-4 text-emerald-400" />
+                      <DownloadCloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <FileText className="w-4 h-4 text-indigo-400" />
+                      <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p
-                      className="text-xs font-semibold text-slate-200 truncate font-mono"
+                      className="text-xs font-semibold text-slate-900 dark:text-slate-200 truncate font-mono"
                       title={task.name}
                     >
                       {task.name}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                         {task.source || "Cloud Stream"}
                       </span>
-                      <span className="text-[10px] text-slate-700">•</span>
-                      <span className="text-[10px] text-emerald-400/90 font-mono flex items-center gap-1">
+                      <span className="text-[10px] text-slate-300 dark:text-slate-700">•</span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400/90 font-mono flex items-center gap-1 font-medium">
                         <HardDrive className="w-2.5 h-2.5" />
                         Google Drive: RunSync-Storage
                       </span>
@@ -2140,32 +2159,32 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                 </div>
 
                 {/* Status, Speed & Action Controls Row */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-2.5 border-t border-white/[0.05]">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-2.5 border-t border-slate-200 dark:border-white/[0.05]">
                   {/* Status Badge */}
                   <div className="shrink-0">
                     <span
                       className={cn(
                         "text-[10px] font-medium font-mono px-2.5 py-0.5 rounded-full flex items-center gap-1.5",
                         isComplete
-                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30"
                           : isTransferring
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
-                          : "bg-purple-500/10 text-purple-300 border border-purple-500/25"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/25"
+                          : "bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/25"
                       )}
                     >
                       {isComplete ? (
                         <>
-                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span>Committed to Drive</span>
                         </>
                       ) : isTransferring ? (
                         <>
-                          <Zap className="w-3 h-3 text-emerald-400 animate-pulse shrink-0" />
+                          <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400 animate-pulse shrink-0" />
                           <span>Drive Sync</span>
                         </>
                       ) : (
                         <>
-                          <DownloadCloud className="w-3 h-3 text-purple-400 animate-pulse shrink-0" />
+                          <DownloadCloud className="w-3 h-3 text-purple-600 dark:text-purple-400 animate-pulse shrink-0" />
                           <span>Streaming</span>
                         </>
                       )}
@@ -2176,23 +2195,23 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                   <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 ml-auto">
                     {/* Speed indicator */}
                     <div className="text-right font-mono leading-tight">
-                      <div className="text-xs font-semibold text-slate-200 tabular-nums">
+                      <div className="text-xs font-semibold text-slate-900 dark:text-slate-200 tabular-nums">
                         {task.speed || "0.00 MB/s"}
                       </div>
-                      <div className="text-[10px] text-slate-400 flex items-center justify-end gap-1 mt-0.5">
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-end gap-1 mt-0.5">
                         <Clock className="w-2.5 h-2.5 shrink-0" />
                         <span>ETA {task.eta || "-"}</span>
                       </div>
                     </div>
 
                     {/* Action Controls */}
-                    <div className="flex items-center gap-1.5 pl-2.5 border-l border-white/[0.08]">
+                    <div className="flex items-center gap-1.5 pl-2.5 border-l border-slate-200 dark:border-white/[0.08]">
                       {/* Disabled Pause Button with disclaimer */}
                       <button
                         type="button"
                         disabled
                         title="Pause/resume is unsupported by the current worker engine"
-                        className="w-7 h-7 rounded-lg bg-[#0c111e] border border-white/[0.08] flex items-center justify-center text-slate-600 cursor-not-allowed opacity-40"
+                        className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] flex items-center justify-center text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-40"
                         aria-label="Pause (unsupported)"
                       >
                         <Pause className="w-3 h-3 fill-current" />
@@ -2211,7 +2230,7 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                           <button
                             type="button"
                             onClick={() => setConfirmCancelId(null)}
-                            className="px-1.5 py-1 rounded bg-[#172036] text-slate-300 text-[10px] hover:text-white"
+                            className="px-1.5 py-1 rounded bg-slate-200 dark:bg-[#172036] text-slate-700 dark:text-slate-300 text-[10px] hover:text-slate-900 dark:hover:text-white"
                           >
                             Back
                           </button>
@@ -2222,7 +2241,7 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                           onClick={() => setConfirmCancelId(task.id)}
                           disabled={isCancelling}
                           title="Cancel stream operation"
-                          className="w-7 h-7 rounded-lg bg-[#0c111e] border border-white/[0.08] hover:border-rose-500/40 hover:bg-rose-500/15 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                          className="w-7 h-7 rounded-lg bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] hover:border-rose-400 hover:bg-rose-50 dark:hover:border-rose-500/40 dark:hover:bg-rose-500/15 flex items-center justify-center text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition-all active:scale-95 shadow-xs disabled:opacity-50"
                           aria-label="Cancel task"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -2235,12 +2254,12 @@ export const ActiveTransfers: React.FC<ActiveTransfersProps> = ({
                 {/* Progress bar row */}
                 <div className="space-y-1.5 pt-0.5">
                   <div className="flex items-center justify-between text-[11px] font-mono">
-                    <span className="text-slate-400">Stream Progress</span>
-                    <span className="text-indigo-400 font-semibold tabular-nums">
+                    <span className="text-slate-500 dark:text-slate-400">Stream Progress</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-semibold tabular-nums">
                       {safeProgress.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-[#0c111e] rounded-full overflow-hidden border border-white/[0.06]">
+                  <div className="w-full h-1.5 bg-slate-200 dark:bg-[#0c111e] rounded-full overflow-hidden border border-slate-300 dark:border-white/[0.06]">
                     <div
                       className={cn(
                         "h-full transition-all duration-300 rounded-full",
@@ -2356,27 +2375,27 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
   return (
     <>
       {/* Card 1: Live Transfer Speed Wave Curve */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between group hover:border-white/[0.12] transition-all">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">
         <div>
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               Throughput Curve
             </span>
-            <span className="text-[10px] font-mono text-slate-400">Realtime Stream</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">Realtime Stream</span>
           </div>
 
           <div className="mt-2.5">
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight tabular-nums">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans tracking-tight tabular-nums">
               {currentSpeed.includes("MB/s") ? currentSpeed : `${currentSpeed} MB/s`}
             </div>
-            <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
               Current telemetry throughput
             </div>
           </div>
         </div>
 
-        <div className="w-full h-20 sm:h-24 mt-4 relative overflow-hidden rounded-xl bg-[#070b14] border border-white/[0.05] p-1.5">
+        <div className="w-full h-20 sm:h-24 mt-4 relative overflow-hidden rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] p-1.5">
           <svg
             viewBox="0 0 300 90"
             preserveAspectRatio="none"
@@ -2397,10 +2416,11 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
               <path
                 d={chartPoints.path}
                 fill="none"
-                stroke="#38bdf8"
+                stroke="#0284c7"
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="dark:stroke-[#38bdf8]"
               />
             )}
           </svg>
@@ -2414,19 +2434,19 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
       </div>
 
       {/* Card 2: 24h Data Transfer Historical Graph */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between group hover:border-white/[0.12] transition-all">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">
         <div>
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+              <BarChart2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               Bandwidth Window (24h)
             </span>
             <div className="flex items-center gap-2 text-[10px] font-mono">
-              <span className="flex items-center gap-1 text-sky-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+              <span className="flex items-center gap-1 text-sky-600 dark:text-sky-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 dark:bg-sky-400" />
                 DL
               </span>
-              <span className="flex items-center gap-1 text-indigo-400">
+              <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                 UL
               </span>
@@ -2434,17 +2454,17 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
           </div>
 
           <div className="mt-2.5">
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight tabular-nums">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans tracking-tight tabular-nums">
               {display24hString}
             </div>
-            <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
               Aggregated cloud bandwidth
             </div>
           </div>
         </div>
 
         {/* Scaled Bar Chart for 24h rolling activity */}
-        <div className="mt-4 p-2 rounded-xl bg-[#070b14] border border-white/[0.05]">
+        <div className="mt-4 p-2 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05]">
           <div className="flex items-end justify-between h-16 sm:h-20 gap-1 px-1">
             {hourlyBars.map((bar, index) => {
               const heightPercent = bar.dl > 0
@@ -2462,18 +2482,18 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
                 >
                   <div
                     style={{ height: `${heightPercent}%` }}
-                    className="w-full max-w-[6px] rounded-t-sm bg-sky-400/80 group-hover:bg-sky-300 transition-all"
+                    className="w-full max-w-[6px] rounded-t-sm bg-sky-500 dark:bg-sky-400/80 group-hover:bg-sky-400 dark:group-hover:bg-sky-300 transition-all"
                   />
                   <div
                     style={{ height: `${ulHeightPercent}%` }}
-                    className="w-full max-w-[4px] rounded-t-sm bg-indigo-500/60 group-hover:bg-indigo-400 transition-all"
+                    className="w-full max-w-[4px] rounded-t-sm bg-indigo-500/70 dark:bg-indigo-500/60 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-400 transition-all"
                   />
                 </div>
               );
             })}
           </div>
 
-          <div className="flex justify-between text-[8px] font-mono text-slate-400 mt-2 px-1 border-t border-white/[0.04] pt-1">
+          <div className="flex justify-between text-[8px] font-mono text-slate-400 dark:text-slate-500 mt-2 px-1 border-t border-slate-200 dark:border-white/[0.04] pt-1">
             <span>00:00</span>
             <span>06:00</span>
             <span>12:00</span>
@@ -2502,8 +2522,6 @@ import {
   Globe,
   Loader2,
   AlertCircle,
-  HelpCircle,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { validateExtractionInput } from "@/lib/validation";
@@ -2591,20 +2609,20 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-3.5">
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs space-y-3.5 transition-colors">
       {/* Title & Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-200 tracking-wide">
+          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 tracking-wide">
             Extraction Composer
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] text-slate-400 border border-white/[0.06]">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06]">
             Target & Swarm Input
           </span>
         </div>
 
         {isSubmitting && (
-          <div className="flex items-center gap-1.5 text-indigo-400 text-[11px] sm:text-xs font-mono">
+          <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-[11px] sm:text-xs font-mono">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             <span className="truncate">Arming pipeline...</span>
           </div>
@@ -2614,14 +2632,14 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* Main Command Input Bar */}
         <div className="relative flex items-center group">
-          <Link2 className="w-4 h-4 text-slate-500 absolute left-3.5 shrink-0 transition-colors group-focus-within:text-indigo-400" />
+          <Link2 className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 shrink-0 transition-colors group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400" />
           <input
             type="text"
             value={url}
             onChange={handleInputChange}
             disabled={isSubmitting}
             placeholder="Paste Hugging Face repo (e.g. org/model), dataset, or BitTorrent magnet link..."
-            className="w-full bg-[#070b14] border border-white/[0.08] focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/40 rounded-xl pl-10 pr-24 sm:pr-28 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-50"
+            className="w-full bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.08] focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/40 rounded-xl pl-10 pr-24 sm:pr-28 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all font-mono disabled:opacity-50"
           />
           <Button
             type="submit"
@@ -2646,7 +2664,7 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
 
         {/* Validation Error Message */}
         {validationError && (
-          <div className="flex items-center gap-1.5 text-rose-400 text-xs px-1">
+          <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 text-xs px-1">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{validationError}</span>
           </div>
@@ -2665,8 +2683,8 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "auto"
-                  ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 font-semibold"
-                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
+                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold dark:bg-indigo-600/20 dark:text-indigo-300 dark:border-indigo-500/40"
+                  : "bg-slate-100 text-slate-600 border border-slate-200 hover:text-slate-900 hover:border-slate-300 dark:bg-[#070b14] dark:text-slate-400 dark:border-white/[0.06] dark:hover:text-slate-200 dark:hover:border-white/[0.1]"
               }`}
             >
               <Sparkles className="w-3 h-3" />
@@ -2682,8 +2700,8 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "hf"
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold"
-                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
+                  ? "bg-amber-50 text-amber-700 border border-amber-200 font-semibold dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40"
+                  : "bg-slate-100 text-slate-600 border border-slate-200 hover:text-slate-900 hover:border-slate-300 dark:bg-[#070b14] dark:text-slate-400 dark:border-white/[0.06] dark:hover:text-slate-200 dark:hover:border-white/[0.1]"
               }`}
             >
               <span>🤗 Hugging Face</span>
@@ -2698,8 +2716,8 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 whitespace-nowrap transition-all shrink-0 ${
                 source === "academic"
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold"
-                  : "bg-[#070b14] text-slate-400 border border-white/[0.06] hover:text-slate-200 hover:border-white/[0.1]"
+                  ? "bg-cyan-50 text-cyan-700 border border-cyan-200 font-semibold dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40"
+                  : "bg-slate-100 text-slate-600 border border-slate-200 hover:text-slate-900 hover:border-slate-300 dark:bg-[#070b14] dark:text-slate-400 dark:border-white/[0.06] dark:hover:text-slate-200 dark:hover:border-white/[0.1]"
               }`}
             >
               <span>🧲 Academic Torrents</span>
@@ -2707,15 +2725,15 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center self-start sm:self-auto bg-[#070b14] p-1 rounded-xl border border-white/[0.06] shrink-0">
+          <div className="flex items-center self-start sm:self-auto bg-slate-100 dark:bg-[#070b14] p-1 rounded-xl border border-slate-200 dark:border-white/[0.06] shrink-0">
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => setMode("cloud")}
               className={`px-3 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all ${
                 mode === "cloud"
-                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-indigo-600 text-white shadow-xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
               <Database className="w-3 h-3" />
@@ -2728,8 +2746,8 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
               onClick={() => setMode("local")}
               className={`px-3 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all ${
                 mode === "local"
-                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-indigo-600 text-white shadow-xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
               <Globe className="w-3 h-3" />
@@ -2739,28 +2757,28 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
         </div>
 
         {/* Quick Example Presets (Discreet Helper Row) */}
-        <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-400 font-mono overflow-x-auto no-scrollbar">
-          <span className="shrink-0 text-slate-400">Presets:</span>
+        <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-500 dark:text-slate-400 font-mono overflow-x-auto no-scrollbar">
+          <span className="shrink-0 text-slate-400 dark:text-slate-500">Presets:</span>
           <button
             type="button"
             onClick={() => handleQuickPreset("https://huggingface.co/openai/gpt-oss-20b", "hf")}
-            className="hover:text-indigo-400 hover:underline shrink-0"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline shrink-0"
           >
             openai/gpt-oss-20b
           </button>
-          <span className="text-slate-700">•</span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
           <button
             type="button"
             onClick={() => handleQuickPreset("https://huggingface.co/datasets/allenai/c4", "hf")}
-            className="hover:text-indigo-400 hover:underline shrink-0"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline shrink-0"
           >
             allenai/c4
           </button>
-          <span className="text-slate-700">•</span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
           <button
             type="button"
             onClick={() => handleQuickPreset("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Ubuntu-24.04", "academic")}
-            className="hover:text-cyan-400 hover:underline shrink-0"
+            className="hover:text-cyan-600 dark:hover:text-cyan-400 hover:underline shrink-0"
           >
             Academic Torrent Demo
           </button>
@@ -2846,8 +2864,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.activeTransfers.trend,
       isPositive: defaultMetrics.activeTransfers.isPositive,
       icon: Send,
-      iconColor: "text-indigo-400",
-      iconBg: "bg-indigo-500/10 border-indigo-500/20",
+      iconColor: "text-indigo-600 dark:text-indigo-400",
+      iconBg: "bg-indigo-50 border-indigo-200 dark:bg-indigo-500/10 dark:border-indigo-500/20",
       sparklineType: "line" as const,
       sparklineColor: "blue" as const,
       sparklineData: Number(defaultMetrics.activeTransfers.value) > 0 ? [0, 1, 1, 1, 2, 1, 1] : defaultFlatSparkline,
@@ -2859,8 +2877,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.completed.trend,
       isPositive: defaultMetrics.completed.isPositive,
       icon: CheckCircle2,
-      iconColor: "text-emerald-400",
-      iconBg: "bg-emerald-500/10 border-emerald-500/20",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      iconBg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20",
       sparklineType: "bars" as const,
       sparklineColor: "emerald" as const,
       sparklineData: Number(defaultMetrics.completed.value) > 0 ? [1, 2, 3, 4, 5, 5, 6] : defaultFlatSparkline,
@@ -2872,8 +2890,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.dataExtracted.trend,
       isPositive: defaultMetrics.dataExtracted.isPositive,
       icon: Download,
-      iconColor: "text-cyan-400",
-      iconBg: "bg-cyan-500/10 border-cyan-500/20",
+      iconColor: "text-cyan-600 dark:text-cyan-400",
+      iconBg: "bg-cyan-50 border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-500/20",
       sparklineType: "line" as const,
       sparklineColor: "purple" as const,
       sparklineData: (liveExtractedBytes ?? 0) > 0 ? [10, 20, 35, 50, 70, 85, 100] : defaultFlatSparkline,
@@ -2885,8 +2903,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.avgSpeed.trend,
       isPositive: defaultMetrics.avgSpeed.isPositive,
       icon: Zap,
-      iconColor: "text-amber-400",
-      iconBg: "bg-amber-500/10 border-amber-500/20",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      iconBg: "bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20",
       sparklineType: "line" as const,
       sparklineColor: "amber" as const,
       sparklineData: defaultMetrics.avgSpeed.isPositive ? [5, 15, 25, 40, 50, 35, 45] : defaultFlatSparkline,
@@ -2901,11 +2919,11 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
         return (
           <div
             key={card.id}
-            className="p-4 sm:p-5 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm hover:border-white/[0.14] transition-all flex flex-col justify-between group"
+            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs hover:border-slate-300 dark:hover:border-white/[0.14] transition-all flex flex-col justify-between group"
           >
             {/* Top row: Title + Micro Icon */}
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] sm:text-xs font-medium text-slate-400 truncate">
+              <span className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
                 {card.title}
               </span>
               <div
@@ -2920,18 +2938,20 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
 
             {/* Middle row: Big Metric Value */}
             <div className="mt-2.5 sm:mt-3">
-              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight truncate tabular-nums">
+              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans tracking-tight truncate tabular-nums">
                 {card.value}
               </div>
             </div>
 
             {/* Bottom row: Trend subtitle + Sparkline */}
-            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-white/[0.05]">
+            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
               <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono truncate">
                 <span
                   className={cn(
                     "font-medium",
-                    card.isPositive ? "text-emerald-400" : "text-slate-400"
+                    card.isPositive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-slate-500 dark:text-slate-400"
                   )}
                 >
                   {card.trend}
@@ -3272,7 +3292,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
 "use client";
 
 import React, { useEffect } from "react";
-import { Server, Power, Loader2, X, Cpu, Network, HardDrive, CheckCircle2 } from "lucide-react";
+import { Server, Power, Loader2, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ServerWakeModalProps {
@@ -3310,50 +3330,50 @@ export const ServerWakeModal: React.FC<ServerWakeModalProps> = ({
       aria-labelledby="wake-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150 select-none"
     >
-      <div className="w-full max-w-md p-6 rounded-2xl bg-[#0c111e] border border-white/[0.1] shadow-2xl relative space-y-4">
+      <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.1] shadow-2xl relative space-y-4">
         <button
           onClick={onClose}
           disabled={isBooting}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] transition-colors disabled:opacity-30"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors disabled:opacity-30"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" />
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 flex items-center justify-center shrink-0">
             <Server className="w-5 h-5" />
           </div>
           <div>
-            <h3 id="wake-modal-title" className="text-sm font-semibold text-white">
+            <h3 id="wake-modal-title" className="text-sm font-semibold text-slate-900 dark:text-white">
               Cloud Worker in Standby
             </h3>
-            <p className="text-xs text-slate-400">Codespace instance is currently in powersave mode.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Codespace instance is currently in powersave mode.</p>
           </div>
         </div>
 
-        <div className="text-xs text-slate-300 leading-relaxed bg-[#070b14] p-3.5 rounded-xl border border-white/[0.06] space-y-2">
+        <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#070b14] p-3.5 rounded-xl border border-slate-200 dark:border-white/[0.06] space-y-2">
           <p>
             To stream files directly to Google Drive, the cloud extraction node needs to be spawned. Once booted, your pending task will automatically dispatch.
           </p>
-          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1 border-t border-white/[0.04]">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-1 border-t border-slate-200 dark:border-white/[0.04]">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 shrink-0" />
             <span>Automatically shuts down after 5 minutes of idle time to conserve quota.</span>
           </div>
         </div>
 
         {isBooting && (
-          <div className="p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/20 space-y-2">
-            <div className="flex items-center gap-2 text-xs text-indigo-300 font-mono">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+          <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-500/20 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-indigo-700 dark:text-indigo-300 font-mono">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
               <span>Booting container (~25-35s)...</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400 pt-1">
-              <span className="flex items-center gap-1 text-slate-300">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-600 dark:text-slate-400 pt-1">
+              <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 Signal Dispatched
               </span>
-              <span className="flex items-center gap-1 text-indigo-300">
+              <span className="flex items-center gap-1 text-indigo-700 dark:text-indigo-300">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Tunnel Handshake
               </span>
@@ -3400,7 +3420,7 @@ export const ServerWakeModal: React.FC<ServerWakeModalProps> = ({
 
 import React from "react";
 import Link from "next/link";
-import { ArrowUpRight, HardDrive, Database, Shield } from "lucide-react";
+import { ArrowUpRight, HardDrive } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -3424,16 +3444,16 @@ export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
   const remainingBytes = Math.max(totalLimit - usedBytes, 0);
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm space-y-4 flex flex-col justify-between group hover:border-white/[0.12] transition-all">
+    <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs space-y-4 flex flex-col justify-between group hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">
       <div>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="text-xs font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+            <HardDrive className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
             Drive Vault Storage
           </span>
           <Link
             href="/storage"
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors"
             title="Open Storage File Explorer"
           >
             <ArrowUpRight className="w-4 h-4" />
@@ -3441,11 +3461,11 @@ export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
         </div>
 
         <div className="flex items-baseline justify-between mt-2.5">
-          <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tabular-nums">
+          <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans tabular-nums">
             {formatBytes(usedBytes)}{" "}
-            <span className="text-xs sm:text-sm font-normal text-slate-400 font-mono">/ 5 TB</span>
+            <span className="text-xs sm:text-sm font-normal text-slate-500 dark:text-slate-400 font-mono">/ 5 TB</span>
           </div>
-          <span className="text-xs font-mono font-bold text-cyan-400 tabular-nums">
+          <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 tabular-nums">
             {usedPercentage}%
           </span>
         </div>
@@ -3454,25 +3474,25 @@ export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
           <Progress
             value={usedPercentage}
             height="h-2"
-            indicatorColor="bg-gradient-to-r from-cyan-400 to-indigo-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+            indicatorColor="bg-gradient-to-r from-cyan-500 to-indigo-500 dark:from-cyan-400 dark:to-indigo-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
           />
         </div>
       </div>
 
-      <div className="space-y-2.5 pt-3.5 border-t border-white/[0.05] text-xs">
+      <div className="space-y-2.5 pt-3.5 border-t border-slate-100 dark:border-white/[0.05] text-xs">
         <div className="flex items-center justify-between">
-          <span className="text-slate-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]" />
+          <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]" />
             Extracted Files
           </span>
-          <span className="font-mono text-slate-200 tabular-nums">{formatBytes(usedBytes)}</span>
+          <span className="font-mono text-slate-800 dark:text-slate-200 tabular-nums">{formatBytes(usedBytes)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-slate-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-slate-600" />
+          <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
             Remaining Allocation
           </span>
-          <span className="font-mono text-emerald-400 tabular-nums">
+          <span className="font-mono text-emerald-600 dark:text-emerald-400 tabular-nums font-semibold">
             {formatBytes(remainingBytes)}
           </span>
         </div>
@@ -3489,7 +3509,7 @@ export const StorageCard: React.FC<StorageCardProps> = ({ storage }) => {
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Calendar, Loader2, Power, Radio, ShieldCheck } from "lucide-react";
+import { Calendar, Loader2, Power } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase";
 
@@ -3557,11 +3577,11 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 select-none pt-1">
       {/* Left: User Welcome Greeting */}
       <div className="space-y-1">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight font-sans flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-sans flex items-center gap-2">
           <span>{greeting}, {displayName}</span>
           <span className="inline-block animate-wave text-xl sm:text-2xl">👋</span>
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400">
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
           Swarm telemetry, cloud extraction, and synchronized Drive vault.
         </p>
       </div>
@@ -3573,25 +3593,25 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
           onClick={!isOnline && !isBooting && onWake ? onWake : undefined}
           title={!isOnline && !isBooting ? "Click to trigger cloud worker wake sequence" : undefined}
           className={cn(
-            "h-[52px] px-3.5 py-2 rounded-xl bg-[#0c111e] border border-white/[0.08] flex items-center gap-2.5 transition-all min-w-0 select-none shadow-sm",
-            !isOnline && !isBooting && onWake && "cursor-pointer hover:border-indigo-500/50 hover:bg-[#111728] group"
+            "h-[52px] px-3.5 py-2 rounded-xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] flex items-center gap-2.5 transition-all min-w-0 select-none shadow-xs",
+            !isOnline && !isBooting && onWake && "cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-[#111728] group"
           )}
         >
-          <div className="w-8 h-8 rounded-lg bg-[#070b14] border border-white/[0.06] flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.06] flex items-center justify-center shrink-0">
             {isBooting ? (
-              <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+              <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
             ) : isOnline ? (
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)]" />
               </span>
             ) : (
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500" />
             )}
           </div>
 
           <div className="flex flex-col justify-center min-w-0">
-            <div className="text-[11px] sm:text-xs font-semibold text-slate-200 flex items-center gap-1.5 leading-tight truncate">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 leading-tight truncate">
               <span className="truncate">
                 {isBooting
                   ? "Booting Node..."
@@ -3600,25 +3620,25 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
                   : "System Standby"}
               </span>
               {!isOnline && !isBooting && onWake && (
-                <Power className="w-3 h-3 text-slate-400 group-hover:text-indigo-400 shrink-0 transition-colors" />
+                <Power className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 shrink-0 transition-colors" />
               )}
             </div>
-            <div className="text-[9px] sm:text-[10px] font-mono text-slate-400 truncate mt-0.5 leading-tight">
+            <div className="text-[9px] sm:text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-tight">
               {isBooting ? "Spawning..." : cluster}
             </div>
           </div>
         </div>
 
         {/* Date / Time Card */}
-        <div className="h-[52px] px-3.5 py-2 rounded-xl bg-[#0c111e] border border-white/[0.08] flex items-center gap-2.5 min-w-0 select-none shadow-sm">
-          <div className="w-8 h-8 rounded-lg bg-[#070b14] border border-white/[0.06] flex items-center justify-center shrink-0">
-            <Calendar className="w-4 h-4 text-slate-400" />
+        <div className="h-[52px] px-3.5 py-2 rounded-xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] flex items-center gap-2.5 min-w-0 select-none shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.06] flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
           </div>
           <div className="flex flex-col justify-center min-w-0">
-            <div className="text-[11px] sm:text-xs font-semibold text-slate-200 truncate leading-tight">
+            <div className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 truncate leading-tight">
               {currentDate || "Loading..."}
             </div>
-            <div className="text-[9px] sm:text-[10px] font-mono text-slate-400 truncate mt-0.5 leading-tight">
+            <div className="text-[9px] sm:text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-tight">
               {currentTime || "--:--"}
             </div>
           </div>
@@ -3644,6 +3664,7 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 import { ShieldAlert, LogIn, Loader2, Zap, AlertCircle, ArrowRight, ShieldCheck, HardDrive, Cpu, Lock } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -3693,11 +3714,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-[#060911] flex flex-col items-center justify-center text-slate-400 gap-3 select-none">
+      <div className="h-screen w-screen bg-slate-50 dark:bg-[#060911] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3 select-none">
         <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-          <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+          <Loader2 className="w-5 h-5 text-indigo-500 dark:text-indigo-400 animate-spin" />
         </div>
-        <span className="text-xs font-mono text-slate-400 tracking-wider">
+        <span className="text-xs font-mono text-slate-600 dark:text-slate-400 tracking-wider">
           Verifying security handshake...
         </span>
       </div>
@@ -3706,16 +3727,21 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="min-h-screen w-screen bg-[#060911] text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden select-none">
+      <div className="min-h-screen w-screen bg-slate-50 dark:bg-[#060911] text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden select-none transition-colors duration-150">
+        {/* Top Right Theme Toggle on Login Screen */}
+        <div className="absolute top-4 right-4 z-20">
+          <ThemeToggle variant="icon" />
+        </div>
+
         {/* Subtle background ambient celestial glows */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/[0.07] rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/[0.05] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/[0.08] dark:bg-indigo-600/[0.07] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/[0.06] dark:bg-cyan-500/[0.05] rounded-full blur-3xl pointer-events-none" />
 
         {/* Split Container for Desktop / Stacked for Mobile */}
-        <div className="w-full max-w-4xl bg-[#0c111e]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl md:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden grid grid-cols-1 md:grid-cols-12 relative z-10">
+        <div className="w-full max-w-4xl bg-white/95 dark:bg-[#0c111e]/90 backdrop-blur-xl border border-slate-200 dark:border-white/[0.08] rounded-2xl md:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden grid grid-cols-1 md:grid-cols-12 relative z-10">
           
           {/* Left Hero Pane (Visible on all, expanded on desktop) */}
-          <div className="md:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/[0.07] bg-gradient-to-br from-[#0e1424] to-[#0a0f1b]">
+          <div className="md:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/[0.07] bg-gradient-to-br from-slate-50/80 to-indigo-50/30 dark:from-[#0e1424] dark:to-[#0a0f1b]">
             <div className="space-y-6">
               {/* Brand Header */}
               <div className="flex items-center gap-3">
@@ -3724,14 +3750,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-base tracking-tight text-white font-sans">
+                    <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white font-sans">
                       RunSync
                     </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-semibold">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-semibold">
                       2.0
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono block">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono block">
                     Cloud Extraction & Swarm Storage
                   </span>
                 </div>
@@ -3739,35 +3765,35 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
               {/* Pitch & Mission */}
               <div className="space-y-2 pt-2">
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                   High-throughput cloud pipeline for weights, datasets & archives.
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                   Stream multi-gigabyte models directly into Google Drive without local network bottlenecks. Powered by isolated scratchpad containers and parallel Rclone pipelines.
                 </p>
               </div>
 
               {/* Technical Feature Chips */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
-                <div className="p-2.5 rounded-xl bg-[#070b14] border border-white/[0.05] flex items-center gap-2">
-                  <Cpu className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span className="text-[11px] font-mono text-slate-300">FastAPI Swarm</span>
+                <div className="p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-2 shadow-xs">
+                  <Cpu className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300">FastAPI Swarm</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#070b14] border border-white/[0.05] flex items-center gap-2">
-                  <HardDrive className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="text-[11px] font-mono text-slate-300">5 TB Vault</span>
+                <div className="p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-2 shadow-xs">
+                  <HardDrive className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300">5 TB Vault</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#070b14] border border-white/[0.05] flex items-center gap-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="text-[11px] font-mono text-slate-300">Zero Leak Auth</span>
+                <div className="p-2.5 rounded-xl bg-white dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] flex items-center gap-2 shadow-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300">Zero Leak Auth</span>
                 </div>
               </div>
             </div>
 
             {/* Architecture note */}
-            <div className="pt-6 mt-6 border-t border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-slate-400">
+            <div className="pt-6 mt-6 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
-                <Lock className="w-3 h-3 text-emerald-400" />
+                <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 Authorized Access Only
               </span>
               <span>US-West Node</span>
@@ -3775,23 +3801,23 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Right Authentication Action Pane */}
-          <div className="md:col-span-5 p-6 sm:p-8 md:p-10 flex flex-col justify-between bg-[#0b0f1c] space-y-6">
+          <div className="md:col-span-5 p-6 sm:p-8 md:p-10 flex flex-col justify-between bg-white dark:bg-[#0b0f1c] space-y-6">
             <div>
               <div className="space-y-1 mb-6">
-                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Sign in
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Authenticate with your registered email to access telemetry and storage.
                 </p>
               </div>
 
               {/* Access Denied Warning */}
               {accessDenied && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-start gap-2.5">
-                  <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/25 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
+                  <ShieldAlert className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400 mt-0.5" />
                   <div className="leading-relaxed">
-                    <strong className="block text-rose-200">Account Restricted</strong>
+                    <strong className="block text-rose-800 dark:text-rose-200">Account Restricted</strong>
                     <span>{accessDenied} is not on the authorized operator whitelist.</span>
                   </div>
                 </div>
@@ -3799,10 +3825,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
               {/* Interruption or Auth Error */}
               {authError && (
-                <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <div className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
                   <div className="leading-relaxed">
-                    <strong className="block text-amber-200">Notice</strong>
+                    <strong className="block text-amber-800 dark:text-amber-200">Notice</strong>
                     <span>{authError}</span>
                   </div>
                 </div>
@@ -3838,7 +3864,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Bottom Security Disclaimer */}
-            <div className="pt-4 border-t border-white/[0.05] text-[10px] text-slate-400 font-mono text-center">
+            <div className="pt-4 border-t border-slate-200 dark:border-white/[0.05] text-[10px] text-slate-500 dark:text-slate-400 font-mono text-center">
               Protected by Firebase Admin Server Verification • Strict OAuth 2.0
             </div>
           </div>
@@ -3910,6 +3936,8 @@ import {
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
+import { SignOutModal } from "./SignOutModal";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface SidebarProps {
   className?: string;
@@ -3918,6 +3946,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isSignOutOpen, setIsSignOutOpen] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("Saiteja");
 
@@ -3983,15 +4012,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             className={cn(
               "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all select-none group",
               item.active
-                ? "bg-gradient-to-r from-indigo-600/30 to-indigo-500/10 text-white border border-indigo-500/40 shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)] font-bold"
-                : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent"
+                ? "bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm dark:bg-gradient-to-r dark:from-indigo-600/30 dark:to-indigo-500/10 dark:text-white dark:border-indigo-500/40 dark:shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)] font-bold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-white/[0.04] border border-transparent"
             )}
           >
             <div className="flex items-center gap-3">
               <Icon
                 className={cn(
                   "w-4 h-4 transition-colors",
-                  item.active ? "text-indigo-400" : "text-slate-500 group-hover:text-slate-300"
+                  item.active
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-400 group-hover:text-slate-700 dark:text-slate-500 dark:group-hover:text-slate-300"
                 )}
               />
               <span>{item.name}</span>
@@ -4001,8 +4032,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 className={cn(
                   "text-[9px] font-mono px-1.5 py-0.5 rounded-md",
                   item.active
-                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                    : "bg-[#070b14] text-slate-500 border border-white/[0.05]"
+                    ? "bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30"
+                    : "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-[#070b14] dark:text-slate-500 dark:border-white/[0.05]"
                 )}
               >
                 {item.badge}
@@ -4015,16 +4046,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   );
 
   const renderUserProfile = () => (
-    <div className="p-3 rounded-2xl bg-[#080c16] border border-white/[0.06] flex items-center justify-between gap-3">
+    <div className="p-3 rounded-2xl bg-slate-100/90 dark:bg-[#080c16] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between gap-3 shadow-xs">
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-500 text-white flex items-center justify-center text-xs font-bold font-mono shadow-sm shrink-0">
           {userName.charAt(0).toUpperCase()}
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-xs font-semibold text-slate-200 truncate leading-tight">
+          <span className="text-xs font-semibold text-slate-900 dark:text-slate-200 truncate leading-tight">
             {userName}
           </span>
-          <span className="text-[10px] text-slate-400 font-mono truncate leading-tight mt-0.5" title={userEmail}>
+          <span
+            className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate leading-tight mt-0.5"
+            title={userEmail}
+          >
             {userEmail || "Operator"}
           </span>
         </div>
@@ -4032,8 +4066,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
       <button
         type="button"
-        onClick={handleSignOut}
-        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+        onClick={() => setIsSignOutOpen(true)}
+        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors shrink-0"
         title="Sign out session"
         aria-label="Sign out"
       >
@@ -4044,31 +4078,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   return (
     <>
+      {/* Sign Out Confirmation Safety Popup Modal */}
+      <SignOutModal
+        isOpen={isSignOutOpen}
+        onClose={() => setIsSignOutOpen(false)}
+        onConfirm={handleSignOut}
+      />
+
       {/* ================================================================= */}
       {/* MOBILE TOP BAR                                                    */}
       {/* ================================================================= */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#070a12]/90 backdrop-blur-md border-b border-white/[0.07] shrink-0 z-40 sticky top-0">
+      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white/90 dark:bg-[#070a12]/90 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.07] shrink-0 z-40 sticky top-0 transition-colors">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
             <Zap className="w-3.5 h-3.5 fill-current" />
           </div>
-          <span className="font-extrabold text-sm tracking-tight text-white font-sans">
+          <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white font-sans">
             RunSync
           </span>
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-semibold">
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-semibold">
             2.0
           </span>
         </Link>
 
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="p-2 rounded-xl bg-[#0c111e] border border-white/[0.08] text-slate-300 hover:text-white transition-colors"
-          aria-label={isOpen ? "Close menu" : "Open menu"}
-          aria-expanded={isOpen}
-        >
-          {isOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle Button in Mobile Header */}
+          <ThemeToggle variant="icon" />
+
+          {/* Mobile Menu Hamburger */}
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 dark:bg-[#0c111e] dark:hover:bg-[#141b2e] dark:border-white/[0.08] dark:text-slate-300 transition-colors"
+            aria-label={isOpen ? "Close menu" : "Open menu"}
+            aria-expanded={isOpen}
+          >
+            {isOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+        </div>
       </header>
 
       {/* ================================================================= */}
@@ -4085,7 +4132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       {/* Mobile Drawer Panel */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 w-72 bg-[#070b14] border-r border-white/[0.08] z-50 flex flex-col justify-between md:hidden shadow-2xl transition-transform duration-200 ease-in-out p-4",
+          "fixed inset-y-0 left-0 w-72 bg-white dark:bg-[#070b14] border-r border-slate-200 dark:border-white/[0.08] z-50 flex flex-col justify-between md:hidden shadow-2xl transition-transform duration-200 ease-in-out p-4",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -4099,14 +4146,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
                 <Zap className="w-3.5 h-3.5 fill-current" />
               </div>
-              <span className="font-extrabold text-sm tracking-tight text-white">
+              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white">
                 RunSync 2.0
               </span>
             </Link>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05]"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05]"
               aria-label="Close navigation"
             >
               <X className="w-4 h-4" />
@@ -4116,7 +4163,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           {renderNavLinks(() => setIsOpen(false))}
         </div>
 
-        <div className="pt-4 border-t border-white/[0.06]">
+        <div className="pt-4 border-t border-slate-200 dark:border-white/[0.06] space-y-3">
+          <ThemeToggle variant="pill" />
           {renderUserProfile()}
         </div>
       </aside>
@@ -4126,7 +4174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       {/* ================================================================= */}
       <aside
         className={cn(
-          "hidden md:flex w-60 lg:w-64 bg-[#070a12]/95 backdrop-blur-md border-r border-white/[0.07] flex-col justify-between shrink-0 select-none h-screen sticky top-0 z-30 p-4",
+          "hidden md:flex w-60 lg:w-64 bg-white/95 dark:bg-[#070a12]/95 backdrop-blur-md border-r border-slate-200 dark:border-white/[0.07] flex-col justify-between shrink-0 select-none h-screen sticky top-0 z-30 p-4 transition-colors",
           className
         )}
       >
@@ -4137,10 +4185,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               <Zap className="w-4 h-4 fill-current" />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-base tracking-tight text-white font-sans">
+              <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white font-sans">
                 RunSync
               </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-semibold">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-semibold">
                 2.0
               </span>
             </div>
@@ -4149,12 +4197,284 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           {renderNavLinks()}
         </div>
 
-        {/* Bottom: User Profile Info & Sign Out */}
-        <div className="pt-4 border-t border-white/[0.06]">
+        {/* Bottom: Theme Switcher & User Profile Info */}
+        <div className="pt-4 border-t border-slate-200 dark:border-white/[0.06] space-y-3">
+          <ThemeToggle variant="pill" />
           {renderUserProfile()}
         </div>
       </aside>
     </>
+  );
+};
+
+
+//////////////////////////////////////////////////////////////////
+// FILE: components/layout/SignOutModal.tsx
+//////////////////////////////////////////////////////////////////
+
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { LogOut, X, Loader2, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface SignOutModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void> | void;
+}
+
+export const SignOutModal: React.FC<SignOutModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+}) => {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isSigningOut && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isSigningOut, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleConfirm = async () => {
+    setIsSigningOut(true);
+    try {
+      await onConfirm();
+    } finally {
+      setIsSigningOut(false);
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="signout-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150 select-none"
+    >
+      <div className="w-full max-w-sm p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.1] shadow-2xl relative space-y-4">
+        <button
+          onClick={onClose}
+          disabled={isSigningOut}
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors disabled:opacity-30"
+          aria-label="Close dialog"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center shrink-0">
+            <LogOut className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 id="signout-modal-title" className="text-sm font-bold text-slate-900 dark:text-white">
+              Confirm Sign Out
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              End your current RunSync session
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.06] text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          Are you sure you want to sign out? Any active extractions currently streaming will continue running on your cloud worker node.
+        </div>
+
+        <div className="flex items-center justify-end gap-2.5 pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            disabled={isSigningOut}
+            className="text-slate-600 dark:text-slate-400"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleConfirm}
+            disabled={isSigningOut}
+            className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white border-transparent"
+          >
+            {isSigningOut ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Signing Out...</span>
+              </>
+            ) : (
+              <>
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Yes, Sign Out</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+//////////////////////////////////////////////////////////////////
+// FILE: components/providers/ThemeProvider.tsx
+//////////////////////////////////////////////////////////////////
+
+"use client";
+
+import React, { createContext, useContext, useEffect, useState } from "react";
+
+export type Theme = "dark" | "light";
+
+interface ThemeContextType {
+  theme: Theme;
+  toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
+  isMounted: boolean;
+}
+
+const ThemeContext = createContext<ThemeContextType>({
+  theme: "dark",
+  toggleTheme: () => {},
+  setTheme: () => {},
+  isMounted: false,
+});
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>("dark");
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem("runsync_theme") as Theme | null;
+    const initialTheme: Theme = saved === "light" || saved === "dark" ? saved : "dark";
+    setThemeState(initialTheme);
+
+    const root = document.documentElement;
+    if (initialTheme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    } else {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    }
+  }, []);
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    localStorage.setItem("runsync_theme", newTheme);
+    const root = document.documentElement;
+    if (newTheme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    } else {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, isMounted }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export const useTheme = () => useContext(ThemeContext);
+
+
+//////////////////////////////////////////////////////////////////
+// FILE: components/ui/ThemeToggle.tsx
+//////////////////////////////////////////////////////////////////
+
+"use client";
+
+import React from "react";
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "@/components/providers/ThemeProvider";
+import { cn } from "@/lib/utils";
+
+interface ThemeToggleProps {
+  className?: string;
+  variant?: "pill" | "icon";
+}
+
+export const ThemeToggle: React.FC<ThemeToggleProps> = ({
+  className,
+  variant = "icon",
+}) => {
+  const { theme, toggleTheme, isMounted } = useTheme();
+
+  if (!isMounted) {
+    return <div className="w-8 h-8 rounded-xl bg-slate-200/50 dark:bg-white/[0.05]" />;
+  }
+
+  const isDark = theme === "dark";
+
+  if (variant === "pill") {
+    return (
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className={cn(
+          "flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-medium transition-all select-none",
+          "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200",
+          "dark:bg-[#080c16] dark:hover:bg-[#121828] dark:text-slate-300 dark:border-white/[0.06]",
+          className
+        )}
+        title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      >
+        <span className="flex items-center gap-2">
+          {isDark ? (
+            <Moon className="w-3.5 h-3.5 text-indigo-400" />
+          ) : (
+            <Sun className="w-3.5 h-3.5 text-amber-500" />
+          )}
+          <span>{isDark ? "Dark Theme" : "Light Theme"}</span>
+        </span>
+        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-white dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] font-bold">
+          {theme}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className={cn(
+        "p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center select-none active:scale-95",
+        "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-sm",
+        "dark:bg-[#0c111e] dark:hover:bg-[#141b2e] dark:text-slate-300 dark:border-white/[0.08]",
+        className
+      )}
+      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+    >
+      {isDark ? (
+        <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
+      ) : (
+        <Moon className="w-4 h-4 text-indigo-600 hover:-rotate-12 transition-transform" />
+      )}
+    </button>
   );
 };
 
@@ -4270,27 +4590,27 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "secondary", size = "md", children, disabled, type = "button", ...props }, ref) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-[#060911] disabled:opacity-45 disabled:pointer-events-none select-none";
+      "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#060911] disabled:opacity-45 disabled:pointer-events-none select-none";
 
     const variantStyles = {
       primary:
-        "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white rounded-xl shadow-[0_0_20px_-3px_rgba(99,102,241,0.35)] active:scale-[0.98]",
+        "bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl shadow-[0_0_20px_-3px_rgba(99,102,241,0.35)] active:scale-[0.98]",
       secondary:
-        "bg-[#0c111e] hover:bg-[#121828] text-slate-200 border border-white/[0.08] hover:border-white/[0.14] rounded-xl active:scale-[0.98] shadow-sm",
+        "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 dark:bg-[#0c111e] dark:hover:bg-[#121828] dark:text-slate-200 dark:border-white/[0.08] dark:hover:border-white/[0.14] rounded-xl active:scale-[0.98] shadow-sm",
       outline:
-        "bg-transparent hover:bg-white/[0.04] text-slate-300 border border-white/[0.12] hover:border-white/[0.2] rounded-xl active:scale-[0.98]",
+        "bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300 dark:hover:bg-white/[0.04] dark:text-slate-300 dark:border-white/[0.12] dark:hover:border-white/[0.2] rounded-xl active:scale-[0.98]",
       ghost:
-        "text-slate-400 hover:text-slate-100 hover:bg-white/[0.05] rounded-lg",
+        "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-white/[0.05] rounded-lg",
       danger:
-        "bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-xl active:scale-[0.98]",
+        "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 dark:text-rose-300 dark:border-rose-500/30 rounded-xl active:scale-[0.98]",
       pillActive:
-        "bg-white text-slate-950 font-semibold rounded-full shadow-sm active:scale-[0.98]",
+        "bg-slate-900 text-white dark:bg-white dark:text-slate-950 font-semibold rounded-full shadow-sm active:scale-[0.98]",
       pillInactive:
-        "bg-[#080c16] hover:bg-[#0e1424] text-slate-400 hover:text-slate-200 border border-white/[0.06] rounded-full",
+        "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-[#080c16] dark:hover:bg-[#0e1424] dark:text-slate-400 dark:hover:text-slate-200 dark:border-white/[0.06] rounded-full",
       dangerCircle:
-        "w-8 h-8 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 p-0 flex items-center justify-center active:scale-95",
+        "w-8 h-8 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 dark:text-rose-400 dark:border-rose-500/30 p-0 flex items-center justify-center active:scale-95",
       iconCircle:
-        "w-8 h-8 rounded-full bg-[#0c111e] hover:bg-[#121828] text-slate-300 border border-white/[0.08] p-0 flex items-center justify-center active:scale-95",
+        "w-8 h-8 rounded-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:bg-[#0c111e] dark:hover:bg-[#121828] dark:text-slate-300 dark:border-white/[0.08] p-0 flex items-center justify-center active:scale-95",
     };
 
     const sizeStyles = {
@@ -4350,7 +4670,7 @@ export const Progress: React.FC<ProgressProps> = ({
   return (
     <div
       className={cn(
-        "w-full bg-[#070B14] rounded-full overflow-hidden border border-[#1A263D]",
+        "w-full bg-slate-100 dark:bg-[#070B14] rounded-full overflow-hidden border border-slate-200 dark:border-[#1A263D]",
         height,
         className
       )}
@@ -4371,6 +4691,7 @@ export const Progress: React.FC<ProgressProps> = ({
     </div>
   );
 };
+
 
 //////////////////////////////////////////////////////////////////
 // FILE: components/ui/sparkline.tsx

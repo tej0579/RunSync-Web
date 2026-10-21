@@ -18,27 +18,27 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "secondary", size = "md", children, disabled, type = "button", ...props }, ref) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-[#060911] disabled:opacity-45 disabled:pointer-events-none select-none";
+      "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#060911] disabled:opacity-45 disabled:pointer-events-none select-none";
 
     const variantStyles = {
       primary:
-        "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white rounded-xl shadow-[0_0_20px_-3px_rgba(99,102,241,0.35)] active:scale-[0.98]",
+        "bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl shadow-[0_0_20px_-3px_rgba(99,102,241,0.35)] active:scale-[0.98]",
       secondary:
-        "bg-[#0c111e] hover:bg-[#121828] text-slate-200 border border-white/[0.08] hover:border-white/[0.14] rounded-xl active:scale-[0.98] shadow-sm",
+        "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 dark:bg-[#0c111e] dark:hover:bg-[#121828] dark:text-slate-200 dark:border-white/[0.08] dark:hover:border-white/[0.14] rounded-xl active:scale-[0.98] shadow-sm",
       outline:
-        "bg-transparent hover:bg-white/[0.04] text-slate-300 border border-white/[0.12] hover:border-white/[0.2] rounded-xl active:scale-[0.98]",
+        "bg-transparent hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300 dark:hover:bg-white/[0.04] dark:text-slate-300 dark:border-white/[0.12] dark:hover:border-white/[0.2] rounded-xl active:scale-[0.98]",
       ghost:
-        "text-slate-400 hover:text-slate-100 hover:bg-white/[0.05] rounded-lg",
+        "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-white/[0.05] rounded-lg",
       danger:
-        "bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-xl active:scale-[0.98]",
+        "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 dark:text-rose-300 dark:border-rose-500/30 rounded-xl active:scale-[0.98]",
       pillActive:
-        "bg-white text-slate-950 font-semibold rounded-full shadow-sm active:scale-[0.98]",
+        "bg-slate-900 text-white dark:bg-white dark:text-slate-950 font-semibold rounded-full shadow-sm active:scale-[0.98]",
       pillInactive:
-        "bg-[#080c16] hover:bg-[#0e1424] text-slate-400 hover:text-slate-200 border border-white/[0.06] rounded-full",
+        "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-[#080c16] dark:hover:bg-[#0e1424] dark:text-slate-400 dark:hover:text-slate-200 dark:border-white/[0.06] rounded-full",
       dangerCircle:
-        "w-8 h-8 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 p-0 flex items-center justify-center active:scale-95",
+        "w-8 h-8 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 dark:text-rose-400 dark:border-rose-500/30 p-0 flex items-center justify-center active:scale-95",
       iconCircle:
-        "w-8 h-8 rounded-full bg-[#0c111e] hover:bg-[#121828] text-slate-300 border border-white/[0.08] p-0 flex items-center justify-center active:scale-95",
+        "w-8 h-8 rounded-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:bg-[#0c111e] dark:hover:bg-[#121828] dark:text-slate-300 dark:border-white/[0.08] p-0 flex items-center justify-center active:scale-95",
     };
 
     const sizeStyles = {

@@ -19,7 +19,7 @@ export const Progress: React.FC<ProgressProps> = ({
   return (
     <div
       className={cn(
-        "w-full bg-[#070B14] rounded-full overflow-hidden border border-[#1A263D]",
+        "w-full bg-slate-100 dark:bg-[#070B14] rounded-full overflow-hidden border border-slate-200 dark:border-[#1A263D]",
         height,
         className
       )}

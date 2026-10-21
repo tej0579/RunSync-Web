@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+html.dark {
   --background: #060911;
   --foreground: #f8fafc;
 }
@@ -22,34 +27,59 @@ body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.04) 0%, transparent 60%),
-    radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.03) 0%, transparent 50%);
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.04) 0%, transparent 50%);
   background-attachment: fixed;
   scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+html.dark body {
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.04) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.03) 0%, transparent 50%);
   scrollbar-color: #172133 #060911;
 }
 
-/* Custom dark scrollbars */
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 ::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+html.dark ::-webkit-scrollbar-track {
   background: #060911;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #172133;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
+html.dark ::-webkit-scrollbar-thumb {
+  background: #172133;
+}
+
 ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
   background: #25334d;
 }
 
 /* Reusable Glass & Hairline Surfaces */
 .surface-panel {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+html.dark .surface-panel {
   background-color: #0c111e;
   border: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
@@ -60,33 +90,57 @@ body {
 }
 
 .surface-panel-hover:hover {
+  border-color: rgba(203, 213, 225, 1);
+  background-color: #f8fafc;
+}
+
+html.dark .surface-panel-hover:hover {
   border-color: rgba(255, 255, 255, 0.12);
   background-color: #0f1526;
 }
 
 .surface-well {
+  background-color: #f1f5f9;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+html.dark .surface-well {
   background-color: #070b14;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Tooltip & chart overrides */
 .recharts-default-tooltip {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.dark .recharts-default-tooltip {
   background-color: #0c111e !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 10px !important;
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7) !important;
 }
 
 .recharts-tooltip-label {
-  color: #94a3b8 !important;
+  color: #64748b !important;
   font-size: 11px !important;
   margin-bottom: 4px !important;
 }
 
+html.dark .recharts-tooltip-label {
+  color: #94a3b8 !important;
+}
+
 .recharts-tooltip-item {
-  color: #f8fafc !important;
+  color: #0f172a !important;
   font-size: 12px !important;
   font-family: "JetBrains Mono", monospace !important;
+}
+
+html.dark .recharts-tooltip-item {
+  color: #f8fafc !important;
 }
 
 /* Tabular figures for telemetry data */

@@ -88,27 +88,27 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
   return (
     <>
       {/* Card 1: Live Transfer Speed Wave Curve */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between group hover:border-white/[0.12] transition-all">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">
         <div>
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               Throughput Curve
             </span>
-            <span className="text-[10px] font-mono text-slate-400">Realtime Stream</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">Realtime Stream</span>
           </div>
 
           <div className="mt-2.5">
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight tabular-nums">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans tracking-tight tabular-nums">
               {currentSpeed.includes("MB/s") ? currentSpeed : `${currentSpeed} MB/s`}
             </div>
-            <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
               Current telemetry throughput
             </div>
           </div>
         </div>
 
-        <div className="w-full h-20 sm:h-24 mt-4 relative overflow-hidden rounded-xl bg-[#070b14] border border-white/[0.05] p-1.5">
+        <div className="w-full h-20 sm:h-24 mt-4 relative overflow-hidden rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05] p-1.5">
           <svg
             viewBox="0 0 300 90"
             preserveAspectRatio="none"
@@ -129,10 +129,11 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
               <path
                 d={chartPoints.path}
                 fill="none"
-                stroke="#38bdf8"
+                stroke="#0284c7"
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="dark:stroke-[#38bdf8]"
               />
             )}
           </svg>
@@ -146,19 +147,19 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
       </div>
 
       {/* Card 2: 24h Data Transfer Historical Graph */}
-      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm flex flex-col justify-between group hover:border-white/[0.12] transition-all">
+      <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">
         <div>
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+              <BarChart2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               Bandwidth Window (24h)
             </span>
             <div className="flex items-center gap-2 text-[10px] font-mono">
-              <span className="flex items-center gap-1 text-sky-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+              <span className="flex items-center gap-1 text-sky-600 dark:text-sky-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 dark:bg-sky-400" />
                 DL
               </span>
-              <span className="flex items-center gap-1 text-indigo-400">
+              <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                 UL
               </span>
@@ -166,17 +167,17 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
           </div>
 
           <div className="mt-2.5">
-            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight tabular-nums">
+            <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans tracking-tight tabular-nums">
               {display24hString}
             </div>
-            <div className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
               Aggregated cloud bandwidth
             </div>
           </div>
         </div>
 
         {/* Scaled Bar Chart for 24h rolling activity */}
-        <div className="mt-4 p-2 rounded-xl bg-[#070b14] border border-white/[0.05]">
+        <div className="mt-4 p-2 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.05]">
           <div className="flex items-end justify-between h-16 sm:h-20 gap-1 px-1">
             {hourlyBars.map((bar, index) => {
               const heightPercent = bar.dl > 0
@@ -194,18 +195,18 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
                 >
                   <div
                     style={{ height: `${heightPercent}%` }}
-                    className="w-full max-w-[6px] rounded-t-sm bg-sky-400/80 group-hover:bg-sky-300 transition-all"
+                    className="w-full max-w-[6px] rounded-t-sm bg-sky-500 dark:bg-sky-400/80 group-hover:bg-sky-400 dark:group-hover:bg-sky-300 transition-all"
                   />
                   <div
                     style={{ height: `${ulHeightPercent}%` }}
-                    className="w-full max-w-[4px] rounded-t-sm bg-indigo-500/60 group-hover:bg-indigo-400 transition-all"
+                    className="w-full max-w-[4px] rounded-t-sm bg-indigo-500/70 dark:bg-indigo-500/60 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-400 transition-all"
                   />
                 </div>
               );
             })}
           </div>
 
-          <div className="flex justify-between text-[8px] font-mono text-slate-400 mt-2 px-1 border-t border-white/[0.04] pt-1">
+          <div className="flex justify-between text-[8px] font-mono text-slate-400 dark:text-slate-500 mt-2 px-1 border-t border-slate-200 dark:border-white/[0.04] pt-1">
             <span>00:00</span>
             <span>06:00</span>
             <span>12:00</span>

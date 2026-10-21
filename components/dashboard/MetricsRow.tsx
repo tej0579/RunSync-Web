@@ -69,8 +69,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.activeTransfers.trend,
       isPositive: defaultMetrics.activeTransfers.isPositive,
       icon: Send,
-      iconColor: "text-indigo-400",
-      iconBg: "bg-indigo-500/10 border-indigo-500/20",
+      iconColor: "text-indigo-600 dark:text-indigo-400",
+      iconBg: "bg-indigo-50 border-indigo-200 dark:bg-indigo-500/10 dark:border-indigo-500/20",
       sparklineType: "line" as const,
       sparklineColor: "blue" as const,
       sparklineData: Number(defaultMetrics.activeTransfers.value) > 0 ? [0, 1, 1, 1, 2, 1, 1] : defaultFlatSparkline,
@@ -82,8 +82,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.completed.trend,
       isPositive: defaultMetrics.completed.isPositive,
       icon: CheckCircle2,
-      iconColor: "text-emerald-400",
-      iconBg: "bg-emerald-500/10 border-emerald-500/20",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      iconBg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20",
       sparklineType: "bars" as const,
       sparklineColor: "emerald" as const,
       sparklineData: Number(defaultMetrics.completed.value) > 0 ? [1, 2, 3, 4, 5, 5, 6] : defaultFlatSparkline,
@@ -95,8 +95,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.dataExtracted.trend,
       isPositive: defaultMetrics.dataExtracted.isPositive,
       icon: Download,
-      iconColor: "text-cyan-400",
-      iconBg: "bg-cyan-500/10 border-cyan-500/20",
+      iconColor: "text-cyan-600 dark:text-cyan-400",
+      iconBg: "bg-cyan-50 border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-500/20",
       sparklineType: "line" as const,
       sparklineColor: "purple" as const,
       sparklineData: (liveExtractedBytes ?? 0) > 0 ? [10, 20, 35, 50, 70, 85, 100] : defaultFlatSparkline,
@@ -108,8 +108,8 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
       trend: defaultMetrics.avgSpeed.trend,
       isPositive: defaultMetrics.avgSpeed.isPositive,
       icon: Zap,
-      iconColor: "text-amber-400",
-      iconBg: "bg-amber-500/10 border-amber-500/20",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      iconBg: "bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20",
       sparklineType: "line" as const,
       sparklineColor: "amber" as const,
       sparklineData: defaultMetrics.avgSpeed.isPositive ? [5, 15, 25, 40, 50, 35, 45] : defaultFlatSparkline,
@@ -124,11 +124,11 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
         return (
           <div
             key={card.id}
-            className="p-4 sm:p-5 rounded-2xl bg-[#0c111e] border border-white/[0.08] shadow-sm hover:border-white/[0.14] transition-all flex flex-col justify-between group"
+            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0c111e] border border-slate-200 dark:border-white/[0.08] shadow-xs hover:border-slate-300 dark:hover:border-white/[0.14] transition-all flex flex-col justify-between group"
           >
             {/* Top row: Title + Micro Icon */}
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] sm:text-xs font-medium text-slate-400 truncate">
+              <span className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
                 {card.title}
               </span>
               <div
@@ -143,18 +143,20 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
 
             {/* Middle row: Big Metric Value */}
             <div className="mt-2.5 sm:mt-3">
-              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white font-sans tracking-tight truncate tabular-nums">
+              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white font-sans tracking-tight truncate tabular-nums">
                 {card.value}
               </div>
             </div>
 
             {/* Bottom row: Trend subtitle + Sparkline */}
-            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-white/[0.05]">
+            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
               <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono truncate">
                 <span
                   className={cn(
                     "font-medium",
-                    card.isPositive ? "text-emerald-400" : "text-slate-400"
+                    card.isPositive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-slate-500 dark:text-slate-400"
                   )}
                 >
                   {card.trend}

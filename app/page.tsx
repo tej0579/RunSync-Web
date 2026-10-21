@@ -298,15 +298,15 @@ export default function DashboardPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#0c111e]/95 backdrop-blur-md border border-white/[0.1] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/95 dark:bg-[#0c111e]/95 backdrop-blur-md border border-slate-200 dark:border-white/[0.1] text-xs shadow-2xl text-slate-900 dark:text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md"
         >
-          {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-          {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
-          {toast.type === "info" && <Loader2 className="w-4 h-4 text-indigo-400 animate-spin shrink-0" />}
+          {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+          {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />}
+          {toast.type === "info" && <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin shrink-0" />}
           <span className="flex-1 leading-normal font-medium">{toast.message}</span>
           <button
             onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/[0.05] transition-colors ml-1"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors ml-1"
             aria-label="Dismiss message"
           >
             <X className="w-3.5 h-3.5" />
