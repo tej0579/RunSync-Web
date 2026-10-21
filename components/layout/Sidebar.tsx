@@ -75,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       {/* ================================================================= */}
       {/* MOBILE TOP BAR (Visible on small screens only)                     */}
       {/* ================================================================= */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#080D1A] border-b border-[#151D2E] shrink-0 sticky top-0 z-40">
+      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[#080D1A] border-b border-[#151D2E] shrink-0 z-40">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
             <Zap className="w-3.5 h-3.5 fill-current" />

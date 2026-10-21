@@ -300,7 +300,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-5 pb-2 relative">
+    <div className="space-y-4 md:space-y-5 pb-8 sm:pb-6 relative">
       <ServerWakeModal
         isOpen={showWakeModal}
         isBooting={isBooting}
@@ -312,7 +312,7 @@ export default function DashboardPage() {
       />
 
       {toast.show && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0D1424] border border-[#1E2C48] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md">
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0D1424] border border-[#1E2C48] text-xs shadow-2xl text-slate-200 animate-in fade-in slide-in-from-bottom-3 duration-200 max-w-md">
           {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
           {toast.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
           {toast.type === "info" && <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />}
