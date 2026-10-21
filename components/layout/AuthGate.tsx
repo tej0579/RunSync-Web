@@ -82,7 +82,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 w-full h-[100dvh] bg-slate-50 dark:bg-[#060911] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3 select-none overflow-hidden">
+      <div
+        suppressHydrationWarning
+        className="fixed inset-0 w-full h-[100dvh] bg-slate-50 dark:bg-[#060911] flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3 select-none overflow-hidden"
+      >
         <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
           <Loader2 className="w-5 h-5 text-indigo-500 dark:text-indigo-400 animate-spin" />
         </div>
@@ -95,7 +98,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="fixed inset-0 w-full h-[100dvh] bg-slate-50 dark:bg-[#060911] text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 relative select-none transition-colors duration-150 overflow-hidden">
+      <div
+        suppressHydrationWarning
+        className="fixed inset-0 w-full h-[100dvh] bg-slate-50 dark:bg-[#060911] text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 relative select-none transition-colors duration-150 overflow-hidden"
+      >
         {/* Strictly clipped background ambient celestial glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-12 -left-12 w-80 h-80 bg-indigo-500/[0.08] dark:bg-indigo-600/[0.07] rounded-full blur-3xl" />
