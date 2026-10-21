@@ -33,6 +33,43 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 let parsedEnv: ServerEnv | null = null;
 
+/**
+ * Normalizes PEM private keys from environment variables.
+ * Automatically recovers keys flattened into spaces by cloud provider dashboards (e.g. Netlify),
+ * strips stray quotes, and restores canonical RFC 7468 PEM line formatting for OpenSSL/crypto.
+ */
+export function cleanPrivateKey(key?: string): string {
+  if (!key) return "";
+  let cleaned = key.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  // Convert literal \n or \r\n escape sequences
+  cleaned = cleaned.replace(/\\n/g, "\n").replace(/\r/g, "").trim();
+
+  // Reconstruct standard PEM structure if flattened by cloud dashboard spaces
+  if (cleaned.includes("BEGIN") && cleaned.includes("END")) {
+    const headerMatch = cleaned.match(/-----BEGIN [A-Z\s]+-----/);
+    const footerMatch = cleaned.match(/-----END [A-Z\s]+-----/);
+    if (headerMatch && footerMatch) {
+      const header = headerMatch[0];
+      const footer = footerMatch[0];
+      const startIndex = cleaned.indexOf(header) + header.length;
+      const endIndex = cleaned.indexOf(footer);
+      if (endIndex > startIndex) {
+        const bodyRaw = cleaned.slice(startIndex, endIndex).replace(/\s+/g, "");
+        const lines = bodyRaw.match(/.{1,64}/g) || [];
+        cleaned = `${header}\n${lines.join("\n")}\n${footer}\n`;
+      }
+    }
+  }
+
+  return cleaned;
+}
+
 export function getServerEnv(): ServerEnv {
   if (parsedEnv) return parsedEnv;
 
@@ -40,7 +77,7 @@ export function getServerEnv(): ServerEnv {
     NODE_ENV: process.env.NODE_ENV,
     BACKEND_URL: process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL,
     GDRIVE_CLIENT_EMAIL: process.env.GDRIVE_CLIENT_EMAIL,
-    GDRIVE_PRIVATE_KEY: process.env.GDRIVE_PRIVATE_KEY,
+    GDRIVE_PRIVATE_KEY: cleanPrivateKey(process.env.GDRIVE_PRIVATE_KEY),
     GDRIVE_FOLDER_ID: process.env.GDRIVE_FOLDER_ID || process.env.NEXT_PUBLIC_GDRIVE_FOLDER_ID,
     GITHUB_DISPATCH_TOKEN: process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_TOKEN,
     GITHUB_REPO_OWNER: process.env.GITHUB_REPO_OWNER,

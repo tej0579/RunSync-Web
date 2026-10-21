@@ -6,6 +6,11 @@ import { verifyServerAuth } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Normalizes PEM private keys from environment variables.
+ * Automatically recovers keys flattened into spaces by cloud provider dashboards (e.g. Netlify),
+ * strips stray quotes, and restores canonical RFC 7468 PEM line formatting for OpenSSL/crypto.
+ */
 function cleanPrivateKey(key?: string): string {
   if (!key) return "";
   let cleaned = key.trim();
@@ -15,7 +20,27 @@ function cleanPrivateKey(key?: string): string {
   ) {
     cleaned = cleaned.slice(1, -1);
   }
-  return cleaned.replace(/\\n/g, "\n").replace(/\r/g, "").trim();
+  // Convert literal \n or \r\n escape sequences
+  cleaned = cleaned.replace(/\\n/g, "\n").replace(/\r/g, "").trim();
+
+  // Reconstruct standard PEM structure if flattened by cloud dashboard spaces
+  if (cleaned.includes("BEGIN") && cleaned.includes("END")) {
+    const headerMatch = cleaned.match(/-----BEGIN [A-Z\s]+-----/);
+    const footerMatch = cleaned.match(/-----END [A-Z\s]+-----/);
+    if (headerMatch && footerMatch) {
+      const header = headerMatch[0];
+      const footer = footerMatch[0];
+      const startIndex = cleaned.indexOf(header) + header.length;
+      const endIndex = cleaned.indexOf(footer);
+      if (endIndex > startIndex) {
+        const bodyRaw = cleaned.slice(startIndex, endIndex).replace(/\s+/g, "");
+        const lines = bodyRaw.match(/.{1,64}/g) || [];
+        cleaned = `${header}\n${lines.join("\n")}\n${footer}\n`;
+      }
+    }
+  }
+
+  return cleaned;
 }
 
 function getDriveClient() {

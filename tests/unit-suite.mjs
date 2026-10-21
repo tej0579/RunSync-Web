@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { validateExtractionInput } from "../lib/validation.ts";
 import { checkRateLimit } from "../lib/rateLimit.ts";
 import { parseSpeedStringToMbps, formatBytes, parseBytesFromTaskName } from "../lib/telemetryUtils.ts";
+import { cleanPrivateKey } from "../lib/env.ts";
 
 test("Extraction Validation - Valid Hugging Face Model URL", () => {
   const result = validateExtractionInput("https://huggingface.co/openai/gpt-oss-20b");
@@ -116,4 +117,20 @@ test("Telemetry Utilities - parseBytesFromTaskName estimates", () => {
   assert.equal(parseBytesFromTaskName("dataset-10gb.tar"), 10 * 1024 * 1024 * 1024);
   assert.equal(parseBytesFromTaskName("archive-500mb.zip"), 500 * 1024 * 1024);
   assert.equal(parseBytesFromTaskName("unknown-file"), 0);
+});
+
+test("Environment - cleanPrivateKey recovers space-flattened Netlify PEM keys", () => {
+  const dummyBase64 = "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDkIInf6AkJQ8fA" +
+                      "qnUGKSVvcq0SCgvQD3zF/hNKCKs3rfFsAoF5ZgHMsDcGd2mXqKkce+ZOsieJWlP5";
+  const flattenedNetlifyKey = `-----BEGIN PRIVATE KEY----- ${dummyBase64} -----END PRIVATE KEY-----`;
+  
+  const reconstructed = cleanPrivateKey(flattenedNetlifyKey);
+  assert.ok(reconstructed.startsWith("-----BEGIN PRIVATE KEY-----\n"));
+  assert.ok(reconstructed.endsWith("-----END PRIVATE KEY-----\n"));
+  assert.ok(reconstructed.includes("\n"));
+  assert.ok(!reconstructed.includes("-----BEGIN PRIVATE KEY----- "));
+
+  // Literal \n sequences
+  const literalNKey = "----BEGIN PRIVATE KEY-----\n" + dummyBase64 + "\n-----END PRIVATE KEY-----\n";
+  assert.ok(cleanPrivateKey(literalNKey).includes("\n"));
 });
