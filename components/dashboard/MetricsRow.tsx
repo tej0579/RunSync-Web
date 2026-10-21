@@ -149,21 +149,22 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
             </div>
 
             {/* Bottom row: Trend subtitle + Sparkline */}
-            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
-              <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono truncate">
+            <div className="flex items-end justify-between gap-1.5 mt-2.5 sm:mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
+              <div className="min-w-0 flex-1">
                 <span
                   className={cn(
-                    "font-medium",
+                    "font-mono text-[9.5px] sm:text-[11px] font-medium leading-none block whitespace-nowrap overflow-hidden text-ellipsis",
                     card.isPositive
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-slate-500 dark:text-slate-400"
                   )}
+                  title={card.trend}
                 >
                   {card.trend}
                 </span>
               </div>
 
-              <div className="w-14 sm:w-16 h-5 shrink-0 opacity-75 group-hover:opacity-100 transition-opacity">
+              <div className="w-10 sm:w-16 h-5 shrink-0 opacity-75 group-hover:opacity-100 transition-opacity">
                 <Sparkline
                   data={card.sparklineData}
                   type={card.sparklineType}

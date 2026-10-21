@@ -181,12 +181,12 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
               completed: {
                 ...prev.kpis.completed,
                 value: completedCount,
-                trend: `+${completedWeek} this week`,
+                trend: completedWeek > 0 ? `+${completedWeek} this week` : "0 this week",
               },
               dataExtracted: {
                 ...prev.kpis.dataExtracted,
                 value: formatBytes(totalBytes),
-                trend: `+${formatBytes(todayBytes)} today`,
+                trend: todayBytes > 0 ? `+${formatBytes(todayBytes)} today` : "+0 B today",
               },
             },
           }));

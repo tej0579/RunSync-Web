@@ -247,6 +247,135 @@ function DriveRow({
   );
 }
 
+function MobileDriveCard({
+  item,
+  depth = 0,
+  expandedFolders,
+  onToggleFolder,
+  onDownload,
+}: {
+  item: DriveItem;
+  depth?: number;
+  expandedFolders: Record<string, boolean>;
+  onToggleFolder: (item: DriveItem) => void;
+  onDownload: (item: DriveItem) => void;
+}) {
+  const isExpanded = !!expandedFolders[item.id];
+
+  return (
+    <div
+      className={`space-y-2 ${
+        depth > 0
+          ? "ml-3.5 pl-2.5 border-l-2 border-indigo-500/25 dark:border-indigo-500/30"
+          : ""
+      }`}
+    >
+      <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.07] space-y-2 shadow-2xs">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {item.isFolder ? (
+              <button
+                type="button"
+                onClick={() => onToggleFolder(item)}
+                className="p-1 -ml-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-200/50 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] transition-all shrink-0"
+                title={isExpanded ? "Collapse folder" : "Expand folder"}
+                aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                )}
+              </button>
+            ) : null}
+
+            <div
+              onClick={() => item.isFolder && onToggleFolder(item)}
+              className={`flex items-center gap-2 min-w-0 flex-1 ${
+                item.isFolder ? "cursor-pointer" : ""
+              }`}
+            >
+              {item.isFolder ? (
+                <Folder className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              ) : (
+                getFileIcon(item.name, item.mimeType)
+              )}
+              <span
+                className={`text-xs font-medium text-slate-900 dark:text-slate-200 truncate ${
+                  item.isFolder
+                    ? "hover:text-indigo-600 dark:hover:text-indigo-300 font-semibold"
+                    : ""
+                }`}
+                title={item.name}
+              >
+                {item.name}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {!item.isFolder && (
+              <button
+                type="button"
+                onClick={() => onDownload(item)}
+                className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all"
+                title="Download file"
+                aria-label={`Download ${item.name}`}
+              >
+                <DownloadCloud className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              </button>
+            )}
+            {item.webViewLink && (
+              <a
+                href={item.webViewLink}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/60 dark:hover:text-indigo-400 dark:hover:bg-white/[0.08] transition-all"
+                title={item.isFolder ? "Open folder in Google Drive" : "Preview in Drive"}
+                aria-label={`Open ${item.name} in Drive`}
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-white/[0.05]">
+          <span>Size: {item.sizeFormatted}</span>
+          <span>Modified: {item.modifiedFormatted}</span>
+        </div>
+      </div>
+
+      {/* Expanded sub-tree for mobile folders */}
+      {isExpanded && (
+        <div className="space-y-2 pt-0.5">
+          {item.isLoadingChildren ? (
+            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-[#070b14]/80 border border-slate-200 dark:border-white/[0.06] flex items-center gap-2 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
+              <span>Loading folder contents...</span>
+            </div>
+          ) : !item.children || item.children.length === 0 ? (
+            <div className="p-3 rounded-xl bg-slate-50/60 dark:bg-[#070b14]/60 border border-slate-200 dark:border-white/[0.05] text-slate-400 dark:text-slate-500 text-xs italic">
+              (Empty folder)
+            </div>
+          ) : (
+            item.children.map((child) => (
+              <MobileDriveCard
+                key={child.id}
+                item={child}
+                depth={depth + 1}
+                expandedFolders={expandedFolders}
+                onToggleFolder={onToggleFolder}
+                onDownload={onDownload}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StoragePage() {
   const [rootFiles, setRootFiles] = useState<DriveItem[]>([]);
   const [searchResults, setSearchResults] = useState<DriveItem[] | null>(null);
@@ -684,60 +813,14 @@ export default function StoragePage() {
             </div>
           ) : (
             displayedFiles.map((file) => (
-              <div
+              <MobileDriveCard
                 key={file.id}
-                className="p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.07] space-y-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {file.isFolder ? (
-                      <Folder className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    ) : (
-                      getFileIcon(file.name, file.mimeType)
-                    )}
-                    <span
-                      onClick={() => file.isFolder && handleToggleFolder(file)}
-                      className={`text-xs font-medium text-slate-900 dark:text-slate-200 truncate ${
-                        file.isFolder ? "cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 font-semibold" : ""
-                      }`}
-                      title={file.name}
-                    >
-                      {file.name}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    {!file.isFolder && (
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(file)}
-                        className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all"
-                        title="Download file"
-                        aria-label={`Download ${file.name}`}
-                      >
-                        <DownloadCloud className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                      </button>
-                    )}
-                    {file.webViewLink && (
-                      <a
-                        href={file.webViewLink}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/60 dark:hover:text-indigo-400 dark:hover:bg-white/[0.08] transition-all"
-                        title="Open in Drive"
-                        aria-label={`Open ${file.name} in Drive`}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-white/[0.05]">
-                  <span>Size: {file.sizeFormatted}</span>
-                  <span>Modified: {file.modifiedFormatted}</span>
-                </div>
-              </div>
+                item={file}
+                depth={0}
+                expandedFolders={expandedFolders}
+                onToggleFolder={handleToggleFolder}
+                onDownload={handleDownload}
+              />
             ))
           )}
         </div>

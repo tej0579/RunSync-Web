@@ -21,12 +21,14 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
   const chartPoints = useMemo(() => {
     const width = 300;
     const height = 90;
-    const padding = 6;
+    const padding = 8;
+    const rightReserve = 36; // Reserves clean clearance for PEAK / AVG / 0 labels
+    const effectiveWidth = width - rightReserve;
 
     if (!speedHistory || speedHistory.length === 0) {
       return {
-        path: `M 0 ${height - padding} L ${width} ${height - padding}`,
-        area: `M 0 ${height - padding} L ${width} ${height - padding} L ${width} ${height} L 0 ${height} Z`,
+        path: `M 0 ${height - padding} L ${effectiveWidth} ${height - padding}`,
+        area: `M 0 ${height - padding} L ${effectiveWidth} ${height - padding} L ${effectiveWidth} ${height} L 0 ${height} Z`,
       };
     }
 
@@ -40,7 +42,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
         ? [speedHistory[0], speedHistory[0]]
         : speedHistory;
 
-    const stepX = width / Math.max(safePoints.length - 1, 1);
+    const stepX = effectiveWidth / Math.max(safePoints.length - 1, 1);
 
     const coords = safePoints.map((d, index) => {
       const speedVal = Number(d.speed) || 0;
@@ -58,7 +60,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
       d += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
     }
 
-    const areaD = `${d} L ${width} ${height} L 0 ${height} Z`;
+    const areaD = `${d} L ${effectiveWidth} ${height} L 0 ${height} Z`;
 
     return { path: d, area: areaD };
   }, [speedHistory]);
@@ -138,7 +140,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
             )}
           </svg>
 
-          <div className="absolute right-2 top-1 bottom-1 flex flex-col justify-between text-[8px] font-mono text-slate-400 pointer-events-none pr-1">
+          <div className="absolute right-2 top-2 bottom-2 flex flex-col justify-between text-[8px] font-mono text-slate-400 pointer-events-none select-none text-right">
             <span>PEAK</span>
             <span>AVG</span>
             <span>0</span>

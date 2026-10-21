@@ -1,6 +1,6 @@
 // ================================================================
 // RunSync 2.0 - Complete Production-Hardened Application Code Export
-// Generated: 2026-10-21T12:46:58.298Z
+// Generated: 2026-10-21T13:04:59.024Z
 // Total files included: 43
 // ================================================================
 
@@ -1552,6 +1552,135 @@ function DriveRow({
   );
 }
 
+function MobileDriveCard({
+  item,
+  depth = 0,
+  expandedFolders,
+  onToggleFolder,
+  onDownload,
+}: {
+  item: DriveItem;
+  depth?: number;
+  expandedFolders: Record<string, boolean>;
+  onToggleFolder: (item: DriveItem) => void;
+  onDownload: (item: DriveItem) => void;
+}) {
+  const isExpanded = !!expandedFolders[item.id];
+
+  return (
+    <div
+      className={`space-y-2 ${
+        depth > 0
+          ? "ml-3.5 pl-2.5 border-l-2 border-indigo-500/25 dark:border-indigo-500/30"
+          : ""
+      }`}
+    >
+      <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.07] space-y-2 shadow-2xs">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {item.isFolder ? (
+              <button
+                type="button"
+                onClick={() => onToggleFolder(item)}
+                className="p-1 -ml-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-200/50 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] transition-all shrink-0"
+                title={isExpanded ? "Collapse folder" : "Expand folder"}
+                aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                )}
+              </button>
+            ) : null}
+
+            <div
+              onClick={() => item.isFolder && onToggleFolder(item)}
+              className={`flex items-center gap-2 min-w-0 flex-1 ${
+                item.isFolder ? "cursor-pointer" : ""
+              }`}
+            >
+              {item.isFolder ? (
+                <Folder className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              ) : (
+                getFileIcon(item.name, item.mimeType)
+              )}
+              <span
+                className={`text-xs font-medium text-slate-900 dark:text-slate-200 truncate ${
+                  item.isFolder
+                    ? "hover:text-indigo-600 dark:hover:text-indigo-300 font-semibold"
+                    : ""
+                }`}
+                title={item.name}
+              >
+                {item.name}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {!item.isFolder && (
+              <button
+                type="button"
+                onClick={() => onDownload(item)}
+                className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all"
+                title="Download file"
+                aria-label={`Download ${item.name}`}
+              >
+                <DownloadCloud className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              </button>
+            )}
+            {item.webViewLink && (
+              <a
+                href={item.webViewLink}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/60 dark:hover:text-indigo-400 dark:hover:bg-white/[0.08] transition-all"
+                title={item.isFolder ? "Open folder in Google Drive" : "Preview in Drive"}
+                aria-label={`Open ${item.name} in Drive`}
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-white/[0.05]">
+          <span>Size: {item.sizeFormatted}</span>
+          <span>Modified: {item.modifiedFormatted}</span>
+        </div>
+      </div>
+
+      {/* Expanded sub-tree for mobile folders */}
+      {isExpanded && (
+        <div className="space-y-2 pt-0.5">
+          {item.isLoadingChildren ? (
+            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-[#070b14]/80 border border-slate-200 dark:border-white/[0.06] flex items-center gap-2 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
+              <span>Loading folder contents...</span>
+            </div>
+          ) : !item.children || item.children.length === 0 ? (
+            <div className="p-3 rounded-xl bg-slate-50/60 dark:bg-[#070b14]/60 border border-slate-200 dark:border-white/[0.05] text-slate-400 dark:text-slate-500 text-xs italic">
+              (Empty folder)
+            </div>
+          ) : (
+            item.children.map((child) => (
+              <MobileDriveCard
+                key={child.id}
+                item={child}
+                depth={depth + 1}
+                expandedFolders={expandedFolders}
+                onToggleFolder={onToggleFolder}
+                onDownload={onDownload}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StoragePage() {
   const [rootFiles, setRootFiles] = useState<DriveItem[]>([]);
   const [searchResults, setSearchResults] = useState<DriveItem[] | null>(null);
@@ -1989,60 +2118,14 @@ export default function StoragePage() {
             </div>
           ) : (
             displayedFiles.map((file) => (
-              <div
+              <MobileDriveCard
                 key={file.id}
-                className="p-3 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-white/[0.07] space-y-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {file.isFolder ? (
-                      <Folder className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    ) : (
-                      getFileIcon(file.name, file.mimeType)
-                    )}
-                    <span
-                      onClick={() => file.isFolder && handleToggleFolder(file)}
-                      className={`text-xs font-medium text-slate-900 dark:text-slate-200 truncate ${
-                        file.isFolder ? "cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 font-semibold" : ""
-                      }`}
-                      title={file.name}
-                    >
-                      {file.name}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    {!file.isFolder && (
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(file)}
-                        className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all"
-                        title="Download file"
-                        aria-label={`Download ${file.name}`}
-                      >
-                        <DownloadCloud className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                      </button>
-                    )}
-                    {file.webViewLink && (
-                      <a
-                        href={file.webViewLink}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/60 dark:hover:text-indigo-400 dark:hover:bg-white/[0.08] transition-all"
-                        title="Open in Drive"
-                        aria-label={`Open ${file.name} in Drive`}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-white/[0.05]">
-                  <span>Size: {file.sizeFormatted}</span>
-                  <span>Modified: {file.modifiedFormatted}</span>
-                </div>
-              </div>
+                item={file}
+                depth={0}
+                expandedFolders={expandedFolders}
+                onToggleFolder={handleToggleFolder}
+                onDownload={handleDownload}
+              />
             ))
           )}
         </div>
@@ -2338,12 +2421,14 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
   const chartPoints = useMemo(() => {
     const width = 300;
     const height = 90;
-    const padding = 6;
+    const padding = 8;
+    const rightReserve = 36; // Reserves clean clearance for PEAK / AVG / 0 labels
+    const effectiveWidth = width - rightReserve;
 
     if (!speedHistory || speedHistory.length === 0) {
       return {
-        path: `M 0 ${height - padding} L ${width} ${height - padding}`,
-        area: `M 0 ${height - padding} L ${width} ${height - padding} L ${width} ${height} L 0 ${height} Z`,
+        path: `M 0 ${height - padding} L ${effectiveWidth} ${height - padding}`,
+        area: `M 0 ${height - padding} L ${effectiveWidth} ${height - padding} L ${effectiveWidth} ${height} L 0 ${height} Z`,
       };
     }
 
@@ -2357,7 +2442,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
         ? [speedHistory[0], speedHistory[0]]
         : speedHistory;
 
-    const stepX = width / Math.max(safePoints.length - 1, 1);
+    const stepX = effectiveWidth / Math.max(safePoints.length - 1, 1);
 
     const coords = safePoints.map((d, index) => {
       const speedVal = Number(d.speed) || 0;
@@ -2375,7 +2460,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
       d += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
     }
 
-    const areaD = `${d} L ${width} ${height} L 0 ${height} Z`;
+    const areaD = `${d} L ${effectiveWidth} ${height} L 0 ${height} Z`;
 
     return { path: d, area: areaD };
   }, [speedHistory]);
@@ -2455,7 +2540,7 @@ export const AnalyticsGrid: React.FC<AnalyticsGridProps> = ({
             )}
           </svg>
 
-          <div className="absolute right-2 top-1 bottom-1 flex flex-col justify-between text-[8px] font-mono text-slate-400 pointer-events-none pr-1">
+          <div className="absolute right-2 top-2 bottom-2 flex flex-col justify-between text-[8px] font-mono text-slate-400 pointer-events-none select-none text-right">
             <span>PEAK</span>
             <span>AVG</span>
             <span>0</span>
@@ -2974,21 +3059,22 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
             </div>
 
             {/* Bottom row: Trend subtitle + Sparkline */}
-            <div className="flex items-end justify-between gap-1 mt-2.5 sm:mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
-              <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono truncate">
+            <div className="flex items-end justify-between gap-1.5 mt-2.5 sm:mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
+              <div className="min-w-0 flex-1">
                 <span
                   className={cn(
-                    "font-medium",
+                    "font-mono text-[9.5px] sm:text-[11px] font-medium leading-none block whitespace-nowrap overflow-hidden text-ellipsis",
                     card.isPositive
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-slate-500 dark:text-slate-400"
                   )}
+                  title={card.trend}
                 >
                   {card.trend}
                 </span>
               </div>
 
-              <div className="w-14 sm:w-16 h-5 shrink-0 opacity-75 group-hover:opacity-100 transition-opacity">
+              <div className="w-10 sm:w-16 h-5 shrink-0 opacity-75 group-hover:opacity-100 transition-opacity">
                 <Sparkline
                   data={card.sparklineData}
                   type={card.sparklineType}
@@ -3962,11 +4048,11 @@ import {
   LogOut,
   ChevronRight,
   Shield,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { SignOutModal } from "./SignOutModal";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface SidebarProps {
@@ -3976,7 +4062,8 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [isSignOutOpen, setIsSignOutOpen] = useState<boolean>(false);
+  const [isConfirmingSignOut, setIsConfirmingSignOut] = useState<boolean>(false);
+  const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("Saiteja");
 
@@ -3992,18 +4079,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   // Close drawer automatically on route navigation
   useEffect(() => {
     setIsOpen(false);
+    setIsConfirmingSignOut(false);
   }, [pathname]);
 
   // Close drawer on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        setIsOpen(false);
+      if (e.key === "Escape") {
+        if (isConfirmingSignOut) {
+          setIsConfirmingSignOut(false);
+        } else if (isOpen) {
+          setIsOpen(false);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, isConfirmingSignOut]);
 
   const navItems = [
     {
@@ -4022,11 +4114,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     },
   ];
 
-  const handleSignOut = async () => {
+  const handleConfirmSignOut = async () => {
+    setIsSigningOut(true);
     try {
       await signOut(auth);
     } catch (err) {
       console.error("Sign out error:", err);
+      setIsSigningOut(false);
     }
   };
 
@@ -4075,45 +4169,83 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     </nav>
   );
 
-  const renderUserProfile = () => (
-    <div className="p-3 rounded-2xl bg-slate-100/90 dark:bg-[#080c16] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between gap-3 shadow-xs">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-500 text-white flex items-center justify-center text-xs font-bold font-mono shadow-sm shrink-0">
-          {userName.charAt(0).toUpperCase()}
+  const renderUserProfile = () => {
+    if (isConfirmingSignOut) {
+      return (
+        <div className="p-3 rounded-2xl bg-rose-50/90 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-500/30 space-y-2.5 animate-in fade-in duration-150 select-none">
+          <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400">
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span className="text-xs font-bold leading-tight">Confirm Sign Out?</span>
+          </div>
+          <p className="text-[10px] text-rose-600/90 dark:text-rose-300/80 leading-relaxed">
+            End active session. Background streams will continue running.
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={() => setIsConfirmingSignOut(false)}
+              disabled={isSigningOut}
+              className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 dark:text-slate-300 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] dark:border-white/[0.08] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSignOut}
+              disabled={isSigningOut}
+              className="px-3 py-1 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              {isSigningOut ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Signing out...</span>
+                </>
+              ) : (
+                <>
+                  <LogOut className="w-3 h-3" />
+                  <span>Sign Out</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-semibold text-slate-900 dark:text-slate-200 truncate leading-tight">
-            {userName}
-          </span>
-          <span
-            className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate leading-tight mt-0.5"
-            title={userEmail}
-          >
-            {userEmail || "Operator"}
-          </span>
-        </div>
-      </div>
+      );
+    }
 
-      <button
-        type="button"
-        onClick={() => setIsSignOutOpen(true)}
-        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors shrink-0"
-        title="Sign out session"
-        aria-label="Sign out"
-      >
-        <LogOut className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  );
+    return (
+      <div className="p-3 rounded-2xl bg-slate-100/90 dark:bg-[#080c16] border border-slate-200 dark:border-white/[0.06] flex items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-500 text-white flex items-center justify-center text-xs font-bold font-mono shadow-sm shrink-0">
+            {userName.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-slate-900 dark:text-slate-200 truncate leading-tight">
+              {userName}
+            </span>
+            <span
+              className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate leading-tight mt-0.5"
+              title={userEmail}
+            >
+              {userEmail || "Operator"}
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsConfirmingSignOut(true)}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition-colors shrink-0"
+          title="Sign out session"
+          aria-label="Sign out"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <>
-      {/* Sign Out Confirmation Safety Popup Modal */}
-      <SignOutModal
-        isOpen={isSignOutOpen}
-        onClose={() => setIsSignOutOpen(false)}
-        onConfirm={handleSignOut}
-      />
 
       {/* ================================================================= */}
       {/* MOBILE TOP BAR                                                    */}
@@ -5213,12 +5345,12 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
               completed: {
                 ...prev.kpis.completed,
                 value: completedCount,
-                trend: `+${completedWeek} this week`,
+                trend: completedWeek > 0 ? `+${completedWeek} this week` : "0 this week",
               },
               dataExtracted: {
                 ...prev.kpis.dataExtracted,
                 value: formatBytes(totalBytes),
-                trend: `+${formatBytes(todayBytes)} today`,
+                trend: todayBytes > 0 ? `+${formatBytes(todayBytes)} today` : "+0 B today",
               },
             },
           }));
