@@ -1,6 +1,6 @@
 // ================================================================
 // RunSync 2.0 - Complete Production-Hardened Application Code Export
-// Generated: 2026-10-21T13:35:42.122Z
+// Generated: 2026-10-21T13:55:14.630Z
 // Total files included: 43
 // ================================================================
 
@@ -234,7 +234,9 @@ export async function POST(
   }
 
   const search = req.nextUrl.search || "";
-  const targetUrl = `${backendBase}/api/v1/${endpoint}${search}`;
+  // Map frontend action endpoint "cancel" to worker API's "shutdown" route
+  const workerEndpoint = endpoint === "cancel" ? "shutdown" : endpoint;
+  const targetUrl = `${backendBase}/api/v1/${workerEndpoint}${search}`;
 
   const contentType = req.headers.get("content-type") || "";
   const headers: Record<string, string> = {
@@ -269,13 +271,33 @@ export async function POST(
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const res = await fetch(targetUrl, {
+    let res = await fetch(targetUrl, {
       method: "POST",
       headers,
       body: bodyPayload,
       signal: controller.signal,
       cache: "no-store",
     });
+
+    // Fallback: If target returned 404 and was cancel/shutdown, try the alternative endpoint
+    if (res.status === 404 && (endpoint === "cancel" || endpoint === "shutdown")) {
+      const altEndpoint = workerEndpoint === "shutdown" ? "cancel" : "shutdown";
+      const altTarget = `${backendBase}/api/v1/${altEndpoint}${search}`;
+      try {
+        const altRes = await fetch(altTarget, {
+          method: "POST",
+          headers,
+          body: bodyPayload,
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (altRes.ok || altRes.status !== 404) {
+          res = altRes;
+        }
+      } catch {
+        // Retain original response
+      }
+    }
 
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
@@ -5684,8 +5706,20 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
   };
 
   const cancelTask = async (taskId: string) => {
-    await sendTaskAction(taskId, "cancel");
-    await pollTelemetry();
+    // Optimistically update snapshot so UI immediately reflects cancellation
+    setSnapshot((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((t) => t.id !== taskId),
+    }));
+
+    const result = await sendTaskAction(taskId, "cancel");
+
+    // Allow worker runtime brief moment to terminate process and then synchronize state
+    setTimeout(() => {
+      pollTelemetry();
+    }, 800);
+
+    return result;
   };
 
   return {
@@ -5854,7 +5888,8 @@ export async function sendTaskAction(
       const formData = new FormData();
       formData.append("task_id", taskId);
 
-      const res = await fetch(`${BACKEND_PROXY_URL}/cancel`, {
+      // The Codespace worker runtime cancels/terminates running transfer processes via /shutdown
+      const res = await fetch(`${BACKEND_PROXY_URL}/shutdown`, {
         method: "POST",
         headers: authHeaders,
         body: formData,
@@ -5863,7 +5898,7 @@ export async function sendTaskAction(
       if (res.ok) {
         return { status: "success" };
       }
-      return { status: "error", message: `Cancel returned HTTP ${res.status}` };
+      return { status: "error", message: `Shutdown returned HTTP ${res.status}` };
     } catch (err: any) {
       return { status: "error", message: err.message || "Failed to cancel task" };
     }

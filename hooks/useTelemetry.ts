@@ -397,8 +397,20 @@ export function useTelemetry(isOnline: boolean, onJobCompleted?: () => void) {
   };
 
   const cancelTask = async (taskId: string) => {
-    await sendTaskAction(taskId, "cancel");
-    await pollTelemetry();
+    // Optimistically update snapshot so UI immediately reflects cancellation
+    setSnapshot((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((t) => t.id !== taskId),
+    }));
+
+    const result = await sendTaskAction(taskId, "cancel");
+
+    // Allow worker runtime brief moment to terminate process and then synchronize state
+    setTimeout(() => {
+      pollTelemetry();
+    }, 800);
+
+    return result;
   };
 
   return {

@@ -146,7 +146,8 @@ export async function sendTaskAction(
       const formData = new FormData();
       formData.append("task_id", taskId);
 
-      const res = await fetch(`${BACKEND_PROXY_URL}/cancel`, {
+      // The Codespace worker runtime cancels/terminates running transfer processes via /shutdown
+      const res = await fetch(`${BACKEND_PROXY_URL}/shutdown`, {
         method: "POST",
         headers: authHeaders,
         body: formData,
@@ -155,7 +156,7 @@ export async function sendTaskAction(
       if (res.ok) {
         return { status: "success" };
       }
-      return { status: "error", message: `Cancel returned HTTP ${res.status}` };
+      return { status: "error", message: `Shutdown returned HTTP ${res.status}` };
     } catch (err: any) {
       return { status: "error", message: err.message || "Failed to cancel task" };
     }

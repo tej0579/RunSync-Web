@@ -224,7 +224,9 @@ export async function POST(
   }
 
   const search = req.nextUrl.search || "";
-  const targetUrl = `${backendBase}/api/v1/${endpoint}${search}`;
+  // Map frontend action endpoint "cancel" to worker API's "shutdown" route
+  const workerEndpoint = endpoint === "cancel" ? "shutdown" : endpoint;
+  const targetUrl = `${backendBase}/api/v1/${workerEndpoint}${search}`;
 
   const contentType = req.headers.get("content-type") || "";
   const headers: Record<string, string> = {
@@ -259,13 +261,33 @@ export async function POST(
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const res = await fetch(targetUrl, {
+    let res = await fetch(targetUrl, {
       method: "POST",
       headers,
       body: bodyPayload,
       signal: controller.signal,
       cache: "no-store",
     });
+
+    // Fallback: If target returned 404 and was cancel/shutdown, try the alternative endpoint
+    if (res.status === 404 && (endpoint === "cancel" || endpoint === "shutdown")) {
+      const altEndpoint = workerEndpoint === "shutdown" ? "cancel" : "shutdown";
+      const altTarget = `${backendBase}/api/v1/${altEndpoint}${search}`;
+      try {
+        const altRes = await fetch(altTarget, {
+          method: "POST",
+          headers,
+          body: bodyPayload,
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (altRes.ok || altRes.status !== 404) {
+          res = altRes;
+        }
+      } catch {
+        // Retain original response
+      }
+    }
 
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
